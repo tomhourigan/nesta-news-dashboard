@@ -184,10 +184,7 @@
     <header>
         <div class="brand-area">
             <div class="nesta-logo">
-                <!-- Code looks for an image in your GitHub repo. If it isn't there, it displays the seamless fallback below -->
                 <img src="nesta-logo.png" alt="Nesta" onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='block';">
-                
-                <!-- Wordmark typographic fallback -->
                 <div id="logo-fallback" style="display: none; font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 34px; color: #0000ff; letter-spacing: -1.5px; line-height: 1; margin: 0;">nesta</div>
             </div>
             <div class="dashboard-title">Comms News Dashboard</div>
@@ -223,19 +220,16 @@
             });
             document.getElementById('time').textContent = now.toLocaleTimeString('en-GB', { 
                 hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/London' 
-            });
+            }) + ' (UK)';
         }
         setInterval(updateClock, 1000);
         updateClock();
 
         const rssSources = [
-            // General National Feeds
             { name: "BBC News", url: "http://feeds.bbci.co.uk/news/uk/rss.xml" },
             { name: "Sky News", url: "https://feeds.skynews.com/feeds/rss/home.xml" },
             { name: "The Guardian", url: "https://www.theguardian.com/uk/rss" },
             { name: "The Telegraph", url: "https://www.telegraph.co.uk/rss.xml" },
-            
-            // Dedicated Mission Section Feeds
             { name: "BBC Education", url: "http://feeds.bbci.co.uk/news/education/rss.xml" },
             { name: "BBC Health", url: "http://feeds.bbci.co.uk/news/health/rss.xml" },
             { name: "BBC Science/Env", url: "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml" },
@@ -245,10 +239,22 @@
         ];
 
         const keywords = {
-            fairer: ["early year", "education", "childcare", "school", "nursery", "pupil", "teacher", "child poverty", "university", "ofsted", "tuition", "a-level", "gcse", "child", "children"],
-            healthy: ["health", "obesity", "glp", "wegovy", "ozempic", "weight", "nhs", "diet", "nutrition", "sugar tax", "junk food", "calorie", "diabetes", "mounjaro", "public health", "medicine"],
-            sustainable: ["climate", "sustainability", "sustainable", "net zero", "netzero", "emission", "carbon", "green energy", "fossil fuel", "global warming", "environment", "pollution", "heat pump", "wind farm", "solar", "cop", "renewable", "energy"]
+            fairer: ["early years", "education", "childcare", "school", "schools", "nursery", "nurseries", "pupil", "pupils", "teacher", "teachers", "child poverty", "university", "universities", "ofsted", "tuition", "a-level", "a-levels", "gcse", "gcses"],
+            healthy: ["health", "obesity", "glp-1", "glp1", "wegovy", "ozempic", "weight loss", "weight-loss", "nhs", "diet", "nutrition", "sugar tax", "junk food", "calorie", "calories", "diabetes", "mounjaro", "public health", "medicine", "vaping"],
+            sustainable: ["climate", "climate change", "sustainability", "sustainable", "net zero", "net-zero", "emissions", "carbon", "green energy", "fossil fuel", "fossil fuels", "global warming", "pollution", "heat pump", "heat pumps", "wind farm", "solar power", "cop28", "cop29", "cop30", "renewable", "renewables", "clean energy", "natural environment"]
         };
+
+        const blocklist = ["premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league"];
+
+        function createRegex(keywordArray) {
+            const escapedWords = keywordArray.map(kw => kw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'));
+            return new RegExp('\\b(' + escapedWords.join('|') + ')\\b', 'i');
+        }
+
+        const regFairer = createRegex(keywords.fairer);
+        const regHealthy = createRegex(keywords.healthy);
+        const regSustainable = createRegex(keywords.sustainable);
+        const regBlocklist = createRegex(blocklist);
 
         async function fetchNews() {
             console.log("Fetching latest news via RSS JSON engine...");
@@ -273,11 +279,16 @@
                             
                             if (articleTimestamp >= thirtySixHoursAgo) {
                                 const searchText = (title + " " + description).toLowerCase();
+                                
+                                if (regBlocklist.test(searchText)) {
+                                    return;
+                                }
+
                                 let targetMission = null;
                                 
-                                if (keywords.fairer.some(kw => searchText.includes(kw))) targetMission = "fairer";
-                                else if (keywords.healthy.some(kw => searchText.includes(kw))) targetMission = "healthy";
-                                else if (keywords.sustainable.some(kw => searchText.includes(kw))) targetMission = "sustainable";
+                                if (regFairer.test(searchText)) targetMission = "fairer";
+                                else if (regHealthy.test(searchText)) targetMission = "healthy";
+                                else if (regSustainable.test(searchText)) targetMission = "sustainable";
                                 
                                 if (targetMission) {
                                     if (!allStories.some(s => s.link === link)) {
@@ -297,7 +308,6 @@
 
             await Promise.all(fetchPromises);
             
-            // Sort reverse chronologically
             allStories.sort((a, b) => b.timestamp - a.timestamp);
             
             document.getElementById("feed-fairer").innerHTML = "";
@@ -307,6 +317,9 @@
             let counts = { fairer: 0, healthy: 0, sustainable: 0 };
 
             allStories.forEach(story => {
+                // NEW LIMIT: If this mission already has 10 articles, skip rendering the rest
+                if (counts[story.targetMission] >= 10) return;
+
                 const div = document.createElement("div");
                 div.className = "news-card";
                 
