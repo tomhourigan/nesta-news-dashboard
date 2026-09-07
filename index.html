@@ -4,19 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nesta | Communications News Dashboard</title>
-    <!-- Using a clean, geometric sans-serif to mimic Nesta's bespoke brand font -->
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --nesta-primary-blue: #0000ff; /* Strong blue often used in their print/web */
+            --nesta-primary-blue: #0000ff;
             --nesta-dark-blue: #0b0c10;
             --bg-light: #f4f5f7;
-            
-            /* Mission specific highlight colours based on their geometric branding */
             --fairer-start: #FF5A36;     
             --healthy-life: #00C8FF;     
             --sustainable: #00E59B;      
-            
             --text-dark: #1A1A1A;
             --text-gray: #666666;
         }
@@ -29,7 +25,6 @@
             color: var(--text-dark);
         }
 
-        /* Top Header Styling */
         header {
             background-color: #FFFFFF;
             color: var(--nesta-dark-blue);
@@ -48,7 +43,7 @@
         }
 
         .nesta-logo img {
-            height: 45px; /* Adjust logo size here */
+            height: 40px;
             display: block;
         }
 
@@ -79,7 +74,6 @@
             font-weight: 600;
         }
 
-        /* Mission Columns Layout */
         main {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -108,7 +102,6 @@
             color: var(--nesta-dark-blue);
         }
 
-        /* Dynamic Brand Accents for each mission */
         #col-fairer .mission-header { border-top: 6px solid var(--fairer-start); }
         #col-healthy .mission-header { border-top: 6px solid var(--healthy-life); }
         #col-sustainable .mission-header { border-top: 6px solid var(--sustainable); }
@@ -119,7 +112,6 @@
             flex-grow: 1;
         }
 
-        /* News Card Styling */
         .news-card {
             border-bottom: 1px solid #EAEAEA;
             padding: 1.5rem 0;
@@ -178,7 +170,6 @@
             line-height: 1.5;
         }
         
-        /* Mobile Responsiveness */
         @media (max-width: 900px) {
             main { grid-template-columns: 1fr; }
             header { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
@@ -193,8 +184,11 @@
     <header>
         <div class="brand-area">
             <div class="nesta-logo">
-                <!-- Fetching a high-quality SVG of the Nesta logo -->
-                <img src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Nesta_Logo.svg" alt="Nesta Logo" onerror="this.onerror=null; this.src='https://seeklogo.com/images/N/nesta-logo-CD67A325DE-seeklogo.com.png';">
+                <!-- Code looks for an image in your GitHub repo. If it isn't there, it displays the seamless fallback below -->
+                <img src="nesta-logo.png" alt="Nesta" onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='block';">
+                
+                <!-- Wordmark typographic fallback -->
+                <div id="logo-fallback" style="display: none; font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 34px; color: #0000ff; letter-spacing: -1.5px; line-height: 1; margin: 0;">nesta</div>
             </div>
             <div class="dashboard-title">Comms News Dashboard</div>
         </div>
@@ -205,19 +199,16 @@
     </header>
     
     <main>
-        <!-- Mission 1 -->
         <section class="mission-col" id="col-fairer">
             <h3 class="mission-header">A Fairer Start</h3>
             <div class="feed-container" id="feed-fairer"></div>
         </section>
 
-        <!-- Mission 2 -->
         <section class="mission-col" id="col-healthy">
             <h3 class="mission-header">A Healthy Life</h3>
             <div class="feed-container" id="feed-healthy"></div>
         </section>
 
-        <!-- Mission 3 -->
         <section class="mission-col" id="col-sustainable">
             <h3 class="mission-header">A Sustainable Future</h3>
             <div class="feed-container" id="feed-sustainable"></div>
@@ -225,7 +216,6 @@
     </main>
 
     <script>
-        // --- 1. CLOCK CONFIGURATION ---
         function updateClock() {
             const now = new Date();
             document.getElementById('date').textContent = now.toLocaleDateString('en-GB', { 
@@ -233,89 +223,73 @@
             });
             document.getElementById('time').textContent = now.toLocaleTimeString('en-GB', { 
                 hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/London' 
-            }) + ' (UK)';
+            });
         }
         setInterval(updateClock, 1000);
         updateClock();
 
-        // --- 2. RSS FEEDS CONFIGURATION ---
         const rssSources = [
+            // General National Feeds
             { name: "BBC News", url: "http://feeds.bbci.co.uk/news/uk/rss.xml" },
             { name: "Sky News", url: "https://feeds.skynews.com/feeds/rss/home.xml" },
             { name: "The Guardian", url: "https://www.theguardian.com/uk/rss" },
-            { name: "The Observer", url: "https://www.theguardian.com/observer/rss" },
             { name: "The Telegraph", url: "https://www.telegraph.co.uk/rss.xml" },
-            // Add your RSS.app / OpenRSS URLs below once generated:
-            // { name: "ITV News", url: "PASTE_RSS_APP_LINK_HERE" },
-            // { name: "Channel 4", url: "PASTE_RSS_APP_LINK_HERE" },
-            // { name: "LBC", url: "PASTE_RSS_APP_LINK_HERE" },
-            // { name: "The Times", url: "PASTE_RSS_APP_LINK_HERE" },
-            // { name: "The i", url: "PASTE_RSS_APP_LINK_HERE" },
-            // { name: "The Economist", url: "PASTE_RSS_APP_LINK_HERE" },
-            // { name: "New Statesman", url: "PASTE_RSS_APP_LINK_HERE" },
-            // { name: "The Spectator", url: "PASTE_RSS_APP_LINK_HERE" }
+            
+            // Dedicated Mission Section Feeds
+            { name: "BBC Education", url: "http://feeds.bbci.co.uk/news/education/rss.xml" },
+            { name: "BBC Health", url: "http://feeds.bbci.co.uk/news/health/rss.xml" },
+            { name: "BBC Science/Env", url: "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml" },
+            { name: "Guardian Education", url: "https://www.theguardian.com/education/rss" },
+            { name: "Guardian Environment", url: "https://www.theguardian.com/environment/rss" },
+            { name: "Guardian Society", url: "https://www.theguardian.com/society/rss" }
         ];
 
-        // --- 3. FILTERING KEYWORDS ---
         const keywords = {
-            fairer: ["early years", "education", "childcare", "school", "schools", "nursery", "pupil", "pupils", "teacher", "teachers", "child poverty", "university", "universities", "ofsted", "tuition", "a-level", "gcse"],
-            healthy: ["health", "obesity", "glp1", "glp-1", "wegovy", "ozempic", "weight", "weight-loss", "nhs", "diet", "nutrition", "sugar tax", "junk food", "calorie", "calories", "diabetes", "mounjaro", "public health"],
-            sustainable: ["climate", "climate change", "sustainability", "sustainable", "net zero", "net-zero", "emissions", "carbon", "green energy", "fossil fuels", "global warming", "environment", "pollution", "heat pump", "wind farm", "solar power", "cop28", "cop29", "renewable"]
+            fairer: ["early year", "education", "childcare", "school", "nursery", "pupil", "teacher", "child poverty", "university", "ofsted", "tuition", "a-level", "gcse", "child", "children"],
+            healthy: ["health", "obesity", "glp", "wegovy", "ozempic", "weight", "nhs", "diet", "nutrition", "sugar tax", "junk food", "calorie", "diabetes", "mounjaro", "public health", "medicine"],
+            sustainable: ["climate", "sustainability", "sustainable", "net zero", "netzero", "emission", "carbon", "green energy", "fossil fuel", "global warming", "environment", "pollution", "heat pump", "wind farm", "solar", "cop", "renewable", "energy"]
         };
 
-        const regFairer = new RegExp("\\b(" + keywords.fairer.join("|") + ")\\b", "i");
-        const regHealthy = new RegExp("\\b(" + keywords.healthy.join("|") + ")\\b", "i");
-        const regSustainable = new RegExp("\\b(" + keywords.sustainable.join("|") + ")\\b", "i");
-
-        // --- 4. FETCH AND DISTRIBUTE NEWS ---
         async function fetchNews() {
-            console.log("Fetching latest news for the last 24 hours...");
+            console.log("Fetching latest news via RSS JSON engine...");
             let allStories = [];
-            
-            // Calculate the timestamp for exactly 24 hours ago
-            const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
+            const thirtySixHoursAgo = Date.now() - (36 * 60 * 60 * 1000);
 
             const fetchPromises = rssSources.map(async (source) => {
                 try {
-                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(source.url)}&t=${Date.now()}`;
-                    const response = await fetch(proxyUrl);
-                    const xmlText = await response.text();
+                    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(source.url)}`;
+                    const response = await fetch(apiUrl);
+                    const data = await response.json();
                     
-                    const parser = new DOMParser();
-                    const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-                    const items = xmlDoc.querySelectorAll("item");
-                    
-                    items.forEach(item => {
-                        const title = item.querySelector("title")?.textContent || "";
-                        const link = item.querySelector("link")?.textContent || "";
-                        const description = item.querySelector("description")?.textContent || "";
-                        
-                        // Parse the publication date safely
-                        const pubDateStr = (item.querySelector("pubDate") || item.getElementsByTagNameNS("*", "date")[0])?.textContent || "";
-                        const parsedDate = new Date(pubDateStr).getTime();
-                        
-                        // Fallback to current time if the feed's date format cannot be parsed, to ensure it doesn't break the sort
-                        const articleTimestamp = isNaN(parsedDate) ? Date.now() : parsedDate;
-                        
-                        // ONLY process the article if it was published in the last 24 hours
-                        if (articleTimestamp >= twentyFourHoursAgo) {
+                    if (data.status === 'ok' && data.items) {
+                        data.items.forEach(item => {
+                            const title = item.title || "";
+                            const link = item.link || "";
+                            const description = item.description || item.content || "";
                             
-                            const searchText = (title + " " + description).toLowerCase();
-                            let targetMission = null;
+                            const pubDateStr = item.pubDate || "";
+                            const parsedDate = new Date(pubDateStr).getTime();
+                            const articleTimestamp = isNaN(parsedDate) ? Date.now() : parsedDate;
                             
-                            // Check which mission matches the text
-                            if (regFairer.test(searchText)) targetMission = "fairer";
-                            else if (regHealthy.test(searchText)) targetMission = "healthy";
-                            else if (regSustainable.test(searchText)) targetMission = "sustainable";
-                            
-                            if (targetMission) {
-                                allStories.push({
-                                    title, link, source: source.name, targetMission, 
-                                    timestamp: articleTimestamp
-                                });
+                            if (articleTimestamp >= thirtySixHoursAgo) {
+                                const searchText = (title + " " + description).toLowerCase();
+                                let targetMission = null;
+                                
+                                if (keywords.fairer.some(kw => searchText.includes(kw))) targetMission = "fairer";
+                                else if (keywords.healthy.some(kw => searchText.includes(kw))) targetMission = "healthy";
+                                else if (keywords.sustainable.some(kw => searchText.includes(kw))) targetMission = "sustainable";
+                                
+                                if (targetMission) {
+                                    if (!allStories.some(s => s.link === link)) {
+                                        allStories.push({
+                                            title, link, source: source.name, targetMission, 
+                                            timestamp: articleTimestamp
+                                        });
+                                    }
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 } catch (error) {
                     console.error(`Error fetching ${source.name}:`, error);
                 }
@@ -323,58 +297,47 @@
 
             await Promise.all(fetchPromises);
             
-            // Sort stories by newest timestamp first (Reverse Chronological Order)
+            // Sort reverse chronologically
             allStories.sort((a, b) => b.timestamp - a.timestamp);
             
-            // Clear current UI columns
             document.getElementById("feed-fairer").innerHTML = "";
             document.getElementById("feed-healthy").innerHTML = "";
             document.getElementById("feed-sustainable").innerHTML = "";
             
             let counts = { fairer: 0, healthy: 0, sustainable: 0 };
 
-            // Render stories into the DOM
             allStories.forEach(story => {
                 const div = document.createElement("div");
                 div.className = "news-card";
                 
-                // Format the time nicely (e.g. "14:30 - Today" or "22:15 - Yesterday")
                 const storyDate = new Date(story.timestamp);
                 const timeStr = storyDate.toLocaleTimeString("en-GB", { hour: '2-digit', minute:'2-digit' });
                 
-                // Helper to say Today or Yesterday
                 const today = new Date();
-                let dayStr = "";
-                if (storyDate.getDate() === today.getDate() && storyDate.getMonth() === today.getMonth()) {
-                    dayStr = "Today";
-                } else {
-                    dayStr = "Yesterday";
-                }
+                let dayStr = (storyDate.getDate() === today.getDate() && storyDate.getMonth() === today.getMonth()) ? "Today" : "Yesterday";
+                const cleanTitle = story.title.replace(/<[^>]*>?/gm, '');
 
                 div.innerHTML = `
                     <div class="meta-info">
                         <span class="source-badge">${story.source}</span>
                         <span class="date-text">${timeStr} (${dayStr})</span>
                     </div>
-                    <h4><a href="${story.link}" target="_blank">${story.title}</a></h4>
+                    <h4><a href="${story.link}" target="_blank">${cleanTitle}</a></h4>
                 `;
                 document.getElementById(`feed-${story.targetMission}`).appendChild(div);
                 counts[story.targetMission]++;
             });
 
-            // Handle empty columns if NO news has been published for a mission in the last 24 hours
             ["fairer", "healthy", "sustainable"].forEach(mission => {
                 if(counts[mission] === 0) {
                     document.getElementById(`feed-${mission}`).innerHTML = 
-                        `<div class="empty-state">No news stories matching this mission's keywords have been published in the last 24 hours.<br><br>Checking for new updates every 5 minutes...</div>`;
+                        `<div class="empty-state">No stories published matching keywords in the recent window.<br><br>Checking for updates every 5 minutes...</div>`;
                 }
             });
         }
 
-        // Fetch immediately on load, then check for new updates every 5 minutes
         fetchNews();
         setInterval(fetchNews, 300000);
-
     </script>
 </body>
 </html>
