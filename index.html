@@ -238,13 +238,25 @@
             { name: "Guardian Society", url: "https://www.theguardian.com/society/rss" }
         ];
 
+        // HIGH-PRECISION KEYWORDS (Multi-word phrases, stripped of single generic words)
         const keywords = {
-            fairer: ["early years", "education", "childcare", "school", "schools", "nursery", "nurseries", "pupil", "pupils", "teacher", "teachers", "child poverty", "university", "universities", "ofsted", "tuition", "a-level", "a-levels", "gcse", "gcses"],
-            healthy: ["health", "obesity", "glp-1", "glp1", "wegovy", "ozempic", "weight loss", "weight-loss", "nhs", "diet", "nutrition", "sugar tax", "junk food", "calorie", "calories", "diabetes", "mounjaro", "public health", "medicine", "vaping"],
-            sustainable: ["climate", "climate change", "sustainability", "sustainable", "net zero", "net-zero", "emissions", "carbon", "green energy", "fossil fuel", "fossil fuels", "global warming", "pollution", "heat pump", "heat pumps", "wind farm", "solar power", "cop28", "cop29", "cop30", "renewable", "renewables", "clean energy", "natural environment"]
+            fairer: ["early years", "education policy", "childcare", "primary school", "primary schools", "secondary school", "secondary schools", "state school", "private school", "grammar school", "headteacher", "headteachers", "teaching union", "child poverty", "university funding", "universities", "ofsted", "tuition fees", "a-level", "a-levels", "gcse", "gcses", "nurseries", "nursery funding", "pupils", "school funding"],
+            healthy: ["obesity", "glp-1", "glp1", "wegovy", "ozempic", "mounjaro", "weight loss", "weight-loss", "nhs", "sugar tax", "junk food", "calorie", "calories", "diabetes", "public health", "vaping", "ultra-processed", "upf", "upfs"],
+            sustainable: ["climate change", "net zero", "net-zero", "carbon emissions", "green energy", "fossil fuel", "fossil fuels", "global warming", "heat pump", "heat pumps", "wind farm", "wind farms", "solar power", "cop28", "cop29", "cop30", "renewable energy", "renewables", "clean energy", "decarbonisation", "greenhouse gas", "climate target"]
         };
 
-        const blocklist = ["premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league"];
+        // ENHANCED BLOCKLIST: Sports, Arts, Lifestyle, and International Keywords
+        const blocklist = [
+            // Sports & Lifestyle
+            "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", "fashion", "designer", "actor", "actress", "film", "movie", "pop star", "album", "music",
+            // International / Geo-Blocking
+            "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "macron", "germany", "scholz", "pentagon"
+        ];
+
+        // URL PATH BLOCKING: If an article link contains these paths, it's instantly ignored
+        const blockedUrlPaths = [
+            "/world/", "/world-news/", "/us-news/", "/australia-news/", "/international/", "/global/"
+        ];
 
         function createRegex(keywordArray) {
             const escapedWords = keywordArray.map(kw => kw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'));
@@ -257,7 +269,7 @@
         const regBlocklist = createRegex(blocklist);
 
         async function fetchNews() {
-            console.log("Fetching latest news via RSS JSON engine...");
+            console.log("Fetching highly refined news...");
             let allStories = [];
             const thirtySixHoursAgo = Date.now() - (36 * 60 * 60 * 1000);
 
@@ -270,9 +282,14 @@
                     if (data.status === 'ok' && data.items) {
                         data.items.forEach(item => {
                             const title = item.title || "";
-                            const link = item.link || "";
+                            const link = (item.link || "").toLowerCase();
                             const description = item.description || item.content || "";
                             
+                            // 1. GEO-BLOCKING VIA URL: Skip international/world sections
+                            if (blockedUrlPaths.some(path => link.includes(path))) {
+                                return;
+                            }
+
                             const pubDateStr = item.pubDate || "";
                             const parsedDate = new Date(pubDateStr).getTime();
                             const articleTimestamp = isNaN(parsedDate) ? Date.now() : parsedDate;
@@ -280,20 +297,23 @@
                             if (articleTimestamp >= thirtySixHoursAgo) {
                                 const searchText = (title + " " + description).toLowerCase();
                                 
+                                // 2. CONTENT BLOCKLIST: Skip if it mentions fashion, sports, foreign leaders, etc.
                                 if (regBlocklist.test(searchText)) {
                                     return;
                                 }
 
                                 let targetMission = null;
                                 
+                                // 3. HIGH PRECISION MATCHING
                                 if (regFairer.test(searchText)) targetMission = "fairer";
                                 else if (regHealthy.test(searchText)) targetMission = "healthy";
                                 else if (regSustainable.test(searchText)) targetMission = "sustainable";
                                 
                                 if (targetMission) {
-                                    if (!allStories.some(s => s.link === link)) {
+                                    // Ensure we don't duplicate articles
+                                    if (!allStories.some(s => s.link === item.link)) {
                                         allStories.push({
-                                            title, link, source: source.name, targetMission, 
+                                            title, link: item.link, source: source.name, targetMission, 
                                             timestamp: articleTimestamp
                                         });
                                     }
@@ -317,7 +337,7 @@
             let counts = { fairer: 0, healthy: 0, sustainable: 0 };
 
             allStories.forEach(story => {
-                // NEW LIMIT: If this mission already has 10 articles, skip rendering the rest
+                // LIMIT TO 10 ARTICLES PER COLUMN
                 if (counts[story.targetMission] >= 10) return;
 
                 const div = document.createElement("div");
@@ -344,7 +364,7 @@
             ["fairer", "healthy", "sustainable"].forEach(mission => {
                 if(counts[mission] === 0) {
                     document.getElementById(`feed-${mission}`).innerHTML = 
-                        `<div class="empty-state">No stories published matching keywords in the recent window.<br><br>Checking for updates every 5 minutes...</div>`;
+                        `<div class="empty-state">No policy-relevant stories published in the recent window.<br><br>Checking for updates every 5 minutes...</div>`;
                 }
             });
         }
