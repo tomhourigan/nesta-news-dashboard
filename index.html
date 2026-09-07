@@ -220,7 +220,7 @@
             });
             document.getElementById('time').textContent = now.toLocaleTimeString('en-GB', { 
                 hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/London' 
-            }) + ' (UK)';
+            });
         }
         setInterval(updateClock, 1000);
         updateClock();
