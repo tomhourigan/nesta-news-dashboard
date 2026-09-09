@@ -19,7 +19,6 @@
         body {
             margin: 0;
             padding: 0;
-            /* Switched to Century Gothic as the primary font */
             font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif;
             background-color: var(--bg-light);
             color: var(--text-dark);
@@ -74,7 +73,6 @@
             font-weight: bold;
         }
 
-        /* Switched to a 2-column layout */
         main {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -93,18 +91,54 @@
             border: 1px solid #EAEAEA;
         }
 
+        /* Updated header styling to accommodate the navigation buttons */
+        .mission-header-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #FFFFFF;
+            border-bottom: 1px solid #EAEAEA;
+            transition: border-top-color 0.3s ease, color 0.3s ease;
+        }
+
+        #wrapper-top { border-top: 6px solid var(--nesta-dark-blue); }
+        #wrapper-rotating { border-top: 6px solid var(--text-gray); /* Defaults before JS kicks in */ }
+
         .mission-header {
             padding: 1.5rem;
             font-size: 1.4rem;
             font-weight: bold;
-            background: #FFFFFF;
             margin: 0;
-            border-bottom: 1px solid #EAEAEA;
             color: var(--nesta-dark-blue);
-            transition: border-top-color 0.3s ease, color 0.3s ease;
+            transition: color 0.3s ease;
         }
 
-        #col-top .mission-header { border-top: 6px solid var(--nesta-dark-blue); }
+        .mission-controls {
+            display: flex;
+            gap: 8px;
+            padding-right: 1.5rem;
+        }
+
+        .mission-controls button {
+            background: none;
+            border: 1px solid #CCC;
+            color: var(--text-gray);
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .mission-controls button:hover {
+            background: var(--nesta-primary-blue);
+            border-color: var(--nesta-primary-blue);
+            color: white;
+        }
 
         .feed-container {
             padding: 0 1.5rem;
@@ -112,7 +146,6 @@
             flex-grow: 1;
         }
 
-        /* Animation class for the 8-second rotation fade in */
         .fade-in {
             animation: fadeIn 0.4s ease-in-out;
         }
@@ -162,7 +195,7 @@
             margin: 0;
             font-size: 1.15rem;
             line-height: 1.4;
-            font-weight: normal; /* Century Gothic looks better slightly lighter */
+            font-weight: normal; 
         }
 
         .news-card h4 strong {
@@ -214,15 +247,24 @@
     </header>
     
     <main>
-        <!-- Panel 1: Top Stories (Static, No Filters) -->
+        <!-- Panel 1: Top Stories -->
         <section class="mission-col" id="col-top">
-            <h3 class="mission-header">Top Stories</h3>
+            <div class="mission-header-wrapper" id="wrapper-top">
+                <h3 class="mission-header">Top Stories</h3>
+            </div>
             <div class="feed-container" id="feed-top"></div>
         </section>
 
-        <!-- Panel 2: Missions (Rotates Every 8 Secs, Heavily Filtered) -->
+        <!-- Panel 2: Missions (Rotates & Manual Navigation) -->
         <section class="mission-col" id="col-rotating">
-            <h3 class="mission-header" id="rotating-header">Loading Missions...</h3>
+            <div class="mission-header-wrapper" id="wrapper-rotating">
+                <h3 class="mission-header" id="rotating-header">Loading Missions...</h3>
+                <div class="mission-controls">
+                    <!-- Navigation Buttons -->
+                    <button onclick="navigateMission(-1)" title="Previous Mission">&#8592;</button>
+                    <button onclick="navigateMission(1)" title="Next Mission">&#8594;</button>
+                </div>
+            </div>
             <div class="feed-container" id="feed-rotating"></div>
         </section>
     </main>
@@ -242,14 +284,12 @@
         updateClock();
 
         // --- SOURCES ---
-        // 1. Unfiltered Top Stories Sources
         const topNewsSources = [
             { name: "BBC News", url: "http://feeds.bbci.co.uk/news/uk/rss.xml" },
             { name: "Sky News", url: "https://feeds.skynews.com/feeds/rss/home.xml" },
             { name: "ITV News", url: "https://rss.app/feeds/L9yrWziOwNyaJ0YV.xml" }
         ];
 
-        // 2. Filtered Mission Sources (includes your new feeds)
         const missionSources = [
             { name: "BBC News", url: "http://feeds.bbci.co.uk/news/uk/rss.xml" },
             { name: "Sky News", url: "https://feeds.skynews.com/feeds/rss/home.xml" },
@@ -265,7 +305,7 @@
             { name: "Guardian Society", url: "https://www.theguardian.com/society/rss" }
         ];
 
-        // --- FILTER CONFIGURATION (Used ONLY for missions) ---
+        // --- CONFIGURATION ---
         const keywords = {
             fairer: ["early years", "education policy", "childcare", "primary school", "primary schools", "secondary school", "secondary schools", "state school", "private school", "grammar school", "headteacher", "headteachers", "teaching union", "child poverty", "university funding", "universities", "ofsted", "tuition fees", "a-level", "a-levels", "gcse", "gcses", "nurseries", "nursery funding", "pupils", "school funding"],
             healthy: ["obesity", "glp-1", "glp1", "wegovy", "ozempic", "mounjaro", "weight loss", "weight-loss", "nhs", "sugar tax", "junk food", "calorie", "calories", "diabetes", "public health", "vaping", "ultra-processed", "upf", "upfs"],
@@ -276,6 +316,9 @@
             "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", "fashion", "designer", "actor", "actress", "film", "movie", "pop star", "album", "music",
             "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "macron", "germany", "scholz", "pentagon"
         ];
+
+        // NEW: Blocklist specifically to remove summary/newspaper round-ups from Top Stories
+        const summaryBlocklist = ["front page", "what the papers say", "briefing", "round-up", "papers:", "newspaper", "at a glance", "catch up", "your morning", "evening news", "daily round-up"];
 
         const blockedUrlPaths = ["/world/", "/world-news/", "/us-news/", "/australia-news/", "/international/", "/global/"];
 
@@ -288,8 +331,9 @@
         const regHealthy = createRegex(keywords.healthy);
         const regSustainable = createRegex(keywords.sustainable);
         const regBlocklist = createRegex(blocklist);
+        const regSummaryBlocklist = createRegex(summaryBlocklist);
 
-        // Global variables to store fetched data
+        // State variables
         let missionData = { fairer: [], healthy: [], sustainable: [] };
         let rotationTimer = null;
         let currentRotationIndex = 0;
@@ -299,6 +343,31 @@
             { id: "healthy", title: "A Healthy Life", color: "var(--healthy-life)" },
             { id: "sustainable", title: "A Sustainable Future", color: "var(--sustainable)" }
         ];
+
+        // --- SMART DEDUPLICATION LOGIC ---
+        function isDuplicateTopic(newTitle, existingTitles) {
+            // Words we don't care about when comparing topics
+            const stopWords = new Set(["this","that","with","from","your","what","have","they","will","when","who","some","make","like","time","just","know","take","into","year","them","want","work","than","now","could","other","over","then","good","only","would","also","back","after","use","two","how","our","first","well","way","even","new","because","any","these","give","day","most","us","and","the","for"]);
+            
+            function getSignificantWords(title) {
+                // Strip punctuation and isolate meaningful words > 3 letters
+                return title.toLowerCase().replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w));
+            }
+
+            const newWords = getSignificantWords(newTitle);
+
+            for (const existing of existingTitles) {
+                const existWords = getSignificantWords(existing);
+                // Count how many significant words overlap between the two headlines
+                const intersection = newWords.filter(w => existWords.includes(w));
+                
+                // If 3 or more significant words match, it's almost certainly the same story
+                if (intersection.length >= 3) { 
+                    return true;
+                }
+            }
+            return false;
+        }
 
         // --- FETCH 1: UNFILTERED TOP STORIES ---
         async function loadTopStories() {
@@ -313,10 +382,18 @@
                     
                     if (data.status === 'ok' && data.items) {
                         data.items.forEach(item => {
+                            const title = item.title || "";
+                            const description = item.description || "";
+                            const searchText = (title + " " + description).toLowerCase();
+
+                            // Filter out "Summary / Headline / Briefing" articles
+                            if (regSummaryBlocklist.test(searchText)) {
+                                return;
+                            }
+
                             const parsedDate = new Date(item.pubDate || "").getTime();
                             const articleTimestamp = isNaN(parsedDate) ? Date.now() : parsedDate;
                             
-                            // Ignore keywords entirely. Just check we aren't duplicating links
                             if (!stories.some(s => s.link === item.link)) {
                                 stories.push({
                                     title: item.title, link: item.link, source: source.name, timestamp: articleTimestamp
@@ -329,16 +406,25 @@
 
             await Promise.all(fetchPromises);
             
-            // Sort by newest and strictly limit to 5
+            // Sort by newest
             stories.sort((a, b) => b.timestamp - a.timestamp);
-            const top5 = stories.slice(0, 5);
+            
+            // Deduplicate across broadcasters to ensure 5 unique topics
+            const top5 = [];
+            const existingTitles = [];
+            
+            for (const story of stories) {
+                if (top5.length >= 5) break; // Stop when we have 5 unique stories
+                
+                if (!isDuplicateTopic(story.title, existingTitles)) {
+                    top5.push(story);
+                    existingTitles.push(story.title);
+                }
+            }
             
             const container = document.getElementById("feed-top");
             container.innerHTML = "";
-
-            top5.forEach(story => {
-                container.appendChild(createStoryCard(story));
-            });
+            top5.forEach(story => container.appendChild(createStoryCard(story)));
         }
 
         // --- FETCH 2: HIGHLY FILTERED MISSIONS ---
@@ -359,7 +445,7 @@
                             const link = (item.link || "").toLowerCase();
                             const description = item.description || item.content || "";
                             
-                            // 1. GEO-BLOCKING
+                            // GEO-BLOCKING
                             if (blockedUrlPaths.some(path => link.includes(path))) return;
 
                             const parsedDate = new Date(item.pubDate || "").getTime();
@@ -368,12 +454,12 @@
                             if (articleTimestamp >= thirtySixHoursAgo) {
                                 const searchText = (title + " " + description).toLowerCase();
                                 
-                                // 2. BLOCKLIST (Sports, Arts, International)
+                                // BLOCKLIST (Sports, Arts, International)
                                 if (regBlocklist.test(searchText)) return;
 
                                 let targetMission = null;
                                 
-                                // 3. HIGH PRECISION MATCHING
+                                // HIGH PRECISION MATCHING
                                 if (regFairer.test(searchText)) targetMission = "fairer";
                                 else if (regHealthy.test(searchText)) targetMission = "healthy";
                                 else if (regSustainable.test(searchText)) targetMission = "sustainable";
@@ -393,13 +479,9 @@
 
             await Promise.all(fetchPromises);
             
-            // Sort stories reverse chronologically
             allMissionStories.sort((a, b) => b.timestamp - a.timestamp);
-            
-            // Empty buckets
             missionData = { fairer: [], healthy: [], sustainable: [] };
             
-            // Fill buckets (up to 10 each)
             allMissionStories.forEach(story => {
                 if (missionData[story.targetMission].length < 10) {
                     missionData[story.targetMission].push(story);
@@ -407,37 +489,50 @@
             });
         }
 
-        // --- RENDER ROTATION ---
+        // --- RENDER ROTATION & NAVIGATION ---
         function renderRotatedMission() {
             const config = rotationConfig[currentRotationIndex];
             const header = document.getElementById("rotating-header");
+            const wrapper = document.getElementById("wrapper-rotating");
             const container = document.getElementById("feed-rotating");
 
             // Update Header Title and Dynamic Accent Colour
             header.textContent = config.title;
-            header.style.borderTop = `6px solid ${config.color}`;
             header.style.color = config.color;
+            wrapper.style.borderTopColor = config.color;
 
             // Trigger CSS fade animation
             container.classList.remove("fade-in");
             void container.offsetWidth; // Force DOM reflow to restart animation
             container.classList.add("fade-in");
 
-            // Empty container
             container.innerHTML = "";
-
             const stories = missionData[config.id];
 
             if (stories.length === 0) {
                 container.innerHTML = `<div class="empty-state">No policy-relevant stories published in the recent window.<br><br>Waiting for updates...</div>`;
             } else {
-                stories.forEach(story => {
-                    container.appendChild(createStoryCard(story));
-                });
+                stories.forEach(story => container.appendChild(createStoryCard(story)));
             }
+        }
 
-            // Move to next mission for next tick
+        // Logic for automatic progression
+        function autoRotate() {
             currentRotationIndex = (currentRotationIndex + 1) % 3;
+            renderRotatedMission();
+        }
+
+        // Logic for manual clicking of arrow buttons
+        function navigateMission(direction) {
+            // Stop the current timer
+            if (rotationTimer) clearInterval(rotationTimer);
+            
+            // Advance or reverse the index (adding 3 ensures we don't get a negative index)
+            currentRotationIndex = (currentRotationIndex + direction + 3) % 3;
+            renderRotatedMission();
+            
+            // Restart the timer so it resumes automatically after 8 seconds
+            rotationTimer = setInterval(autoRotate, 8000);
         }
 
         // --- HTML CARD BUILDER ---
@@ -450,7 +545,7 @@
             
             const today = new Date();
             let dayStr = (storyDate.getDate() === today.getDate() && storyDate.getMonth() === today.getMonth()) ? "Today" : "Yesterday";
-            const cleanTitle = story.title.replace(/<[^>]*>?/gm, ''); // Strip stray HTML tags
+            const cleanTitle = story.title.replace(/<[^>]*>?/gm, ''); 
 
             div.innerHTML = `
                 <div class="meta-info">
@@ -464,16 +559,13 @@
 
         // --- MASTER BOOTSTRAP ---
         async function bootDashboard() {
-            // Load both data streams
             await Promise.all([loadTopStories(), loadMissionStories()]);
             
-            // Start the rotation loop (run instantly once, then every 8 seconds)
             if (rotationTimer) clearInterval(rotationTimer);
             renderRotatedMission();
-            rotationTimer = setInterval(renderRotatedMission, 8000); // 8000 ms = 8 seconds
+            rotationTimer = setInterval(autoRotate, 8000); 
         }
 
-        // Run instantly on load, then re-fetch new data from RSS every 5 minutes
         bootDashboard();
         setInterval(bootDashboard, 300000);
 
