@@ -301,7 +301,6 @@
 
             <section class="mission-col" id="col-trends">
                 <div class="mission-header-wrapper" id="wrapper-trends">
-                    <!-- Changed from "Top UK Social Media Trends" to "Trending" -->
                     <h3 class="mission-header">Trending</h3>
                 </div>
                 <div class="feed-container" id="feed-trends"></div>
@@ -390,7 +389,6 @@
             { name: "Substack / Medium", url: "https://www.bing.com/news/search?q=(site:substack.com+OR+site:medium.com)+AND+(politics+OR+education+OR+health+OR+climate+OR+obesity)&format=RSS" }
         ];
 
-        // MASSIVELY EXPANDED KEYWORDS FOR BROAD CAPTURE
         const keywords = {
             fairer: [
                 "early years", "early years education", "education", "childcare", "school", "schools", 
@@ -583,7 +581,6 @@
         // Fetch 3: MISSIONS (Rotates, Expanded to look back 72 hours)
         async function loadMissionStories() {
             let allMissionStories = [];
-            // Lookback extended to 72 hours to guarantee high volume of mission articles
             const lookbackWindow = Date.now() - (72 * 60 * 60 * 1000);
 
             const fetchPromises = missionSources.map(async (source) => {
@@ -637,46 +634,93 @@
             });
         }
 
-        // Fetch 4: LATEST NESTA BLOGS (Using new user-provided RSS App Link)
+        // Fetch 4: LATEST NESTA BLOGS (With Built-in Waterfall Proxy Fallback)
         async function loadNestaBlogs() {
             const container = document.getElementById("feed-nesta");
-            
-            // Your new working RSS.app link specifically for Nesta blogs
             const nestaUrl = "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml"; 
 
-            try {
-                const fetchUrl = nestaUrl.includes("rss.app") ? nestaUrl : "https://www.nesta.org.uk/blog/feed/";
-                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(fetchUrl)}`;
-                
-                const response = await fetchWithTimeout(apiUrl, 8000);
-                const data = await response.json();
-                
-                if (data.status === 'ok' && data.items && data.items.length > 0) {
-                    container.innerHTML = "";
-                    const latest5 = data.items.slice(0, 5);
-                    
-                    latest5.forEach(story => {
-                        const div = document.createElement("div");
-                        div.className = "news-card";
-                        
-                        const storyDate = new Date(story.pubDate || Date.now());
-                        const dateStr = storyDate.toLocaleDateString("en-GB", { day:'numeric', month:'short', year:'numeric' });
-                        const cleanTitle = story.title.replace(/<[^>]*>?/gm, ''); 
+            // Proxy Waterfall: Tries multiple free conversion proxies sequentially to bypass rate blocks
+            const proxyList = [
+                `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(nestaUrl)}`,
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(nestaUrl)}&t=${Date.now()}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(nestaUrl)}`
+            ];
 
-                        div.innerHTML = `
-                            <div class="meta-info">
-                                <span class="source-badge" style="background-color: var(--nesta-dark-blue);">Nesta Blog</span>
-                                <span class="date-text">${dateStr}</span>
-                            </div>
-                            <h4><a href="${story.link}" target="_blank"><strong>${cleanTitle}</strong></a></h4>
-                        `;
-                        container.appendChild(div);
-                    });
-                } else {
-                    throw new Error("No items found");
+            let items = [];
+
+            for (let i = 0; i < proxyList.length; i++) {
+                try {
+                    const response = await fetchWithTimeout(proxyList[i], 8000);
+                    if (!response.ok) continue;
+
+                    if (proxyList[i].includes('api.json')) {
+                        // Standard rss2json parse
+                        const data = await response.json();
+                        if (data.status === 'ok' && data.items && data.items.length > 0) {
+                            items = data.items.slice(0, 5).map(item => ({
+                                title: item.title,
+                                link: item.link,
+                                pubDate: item.pubDate || Date.now()
+                            }));
+                            break; 
+                        }
+                    } else {
+                        // Raw XML parse via allorigins or codetabs
+                        const xmlText = await response.text();
+                        if (xmlText.includes("<rss") || xmlText.includes("<feed")) {
+                            const parser = new DOMParser();
+                            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+                            const xmlItems = Array.from(xmlDoc.querySelectorAll("item, entry")).slice(0, 5);
+                            
+                            if (xmlItems.length > 0) {
+                                items = xmlItems.map(item => {
+                                    const titleNode = item.querySelector("title");
+                                    const linkNode = item.querySelector("link");
+                                    const pubDateNode = item.querySelector("pubDate, published, updated");
+                                    
+                                    let linkUrl = "";
+                                    if (linkNode) {
+                                        linkUrl = linkNode.textContent || linkNode.getAttribute("href") || "";
+                                    }
+
+                                    return {
+                                        title: titleNode ? titleNode.textContent : "Nesta Blog",
+                                        link: linkUrl,
+                                        pubDate: pubDateNode ? pubDateNode.textContent : Date.now()
+                                    };
+                                });
+                                break;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`Nesta Blog Proxy ${i + 1} failed, trying next...`);
                 }
-            } catch (error) {
-                container.innerHTML = `<div class="empty-state">Unable to load Nesta blogs at this time.</div>`;
+            }
+
+            if (items.length > 0) {
+                container.innerHTML = "";
+                items.forEach(story => {
+                    const div = document.createElement("div");
+                    div.className = "news-card";
+                    
+                    const storyDate = new Date(story.pubDate);
+                    // Ensure the date is valid before formatting
+                    const validDate = isNaN(storyDate.getTime()) ? new Date() : storyDate;
+                    const dateStr = validDate.toLocaleDateString("en-GB", { day:'numeric', month:'short', year:'numeric' });
+                    const cleanTitle = story.title.replace(/<[^>]*>?/gm, ''); 
+
+                    div.innerHTML = `
+                        <div class="meta-info">
+                            <span class="source-badge" style="background-color: var(--nesta-dark-blue);">Nesta Blog</span>
+                            <span class="date-text">${dateStr}</span>
+                        </div>
+                        <h4><a href="${story.link}" target="_blank"><strong>${cleanTitle}</strong></a></h4>
+                    `;
+                    container.appendChild(div);
+                });
+            } else {
+                container.innerHTML = `<div class="empty-state">Unable to load Nesta blogs at this time. Will try again shortly.</div>`;
             }
         }
 
@@ -737,9 +781,10 @@
 
         // --- 7. INDEPENDENT BOOTSTRAPPING ---
         async function bootDashboard() {
+            // Load everything independently
             loadTopStories();
             loadTrends();
-            loadNestaBlogs(); // Now successfully utilizing your RSS.app feed
+            loadNestaBlogs();
             
             await loadMissionStories(); 
             
