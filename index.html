@@ -73,7 +73,7 @@
             font-weight: bold;
         }
 
-        /* NEW 3-COLUMN LAYOUT */
+        /* 3-COLUMN LAYOUT */
         main {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -192,12 +192,12 @@
         .news-card a { text-decoration: none; color: var(--text-dark); transition: color 0.2s; }
         .news-card a:hover { color: var(--nesta-primary-blue); }
 
-        /* SPECIFIC: Shrunken Styles for Top UK Stories (No Date, Same Line) */
+        /* Specific Shrunken Styles for Top UK Stories */
         #feed-top .news-card {
             padding: 0.85rem 0; 
         }
         #feed-top .meta-info {
-            display: none; /* Hides the top bar completely */
+            display: none; 
         }
         #feed-top .news-card h4 {
             font-size: 0.95rem; 
@@ -212,7 +212,7 @@
             display: inline-block;
         }
 
-        /* Styles for Social Media Trends Box */
+        /* Styles for Trends Box */
         #feed-trends {
             padding-top: 0.5rem;
             padding-bottom: 0.5rem;
@@ -301,7 +301,8 @@
 
             <section class="mission-col" id="col-trends">
                 <div class="mission-header-wrapper" id="wrapper-trends">
-                    <h3 class="mission-header">Top UK Social Media Trends</h3>
+                    <!-- Changed from "Top UK Social Media Trends" to "Trending" -->
+                    <h3 class="mission-header">Trending</h3>
                 </div>
                 <div class="feed-container" id="feed-trends"></div>
             </section>
@@ -364,7 +365,6 @@
             { name: "ITV News", url: "https://rss.app/feeds/L9yrWziOwNyaJ0YV.xml" }
         ];
 
-        // Massively Expanded Mission Sources (Including Substack/Medium Workarounds)
         const missionSources = [
             { name: "BBC News", url: "http://feeds.bbci.co.uk/news/uk/rss.xml" },
             { name: "Sky News", url: "https://feeds.skynews.com/feeds/rss/home.xml" },
@@ -383,23 +383,36 @@
             { name: "BBC Education", url: "http://feeds.bbci.co.uk/news/education/rss.xml" },
             { name: "BBC Health", url: "http://feeds.bbci.co.uk/news/health/rss.xml" },
             { name: "BBC Science/Env", url: "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml" },
-            
-            // Substack & Medium Workarounds
             { name: "Medium", url: "https://medium.com/feed/tag/uk-politics" },
             { name: "Medium", url: "https://medium.com/feed/tag/education" },
             { name: "Medium", url: "https://medium.com/feed/tag/climate-change" },
             { name: "Medium", url: "https://medium.com/feed/tag/health" },
-            // Bing News RSS targeted specifically at Substack & Medium domains
             { name: "Substack / Medium", url: "https://www.bing.com/news/search?q=(site:substack.com+OR+site:medium.com)+AND+(politics+OR+education+OR+health+OR+climate+OR+obesity)&format=RSS" }
         ];
 
+        // MASSIVELY EXPANDED KEYWORDS FOR BROAD CAPTURE
         const keywords = {
-            fairer: ["early years", "education policy", "childcare", "primary school", "primary schools", "secondary school", "secondary schools", "state school", "private school", "grammar school", "headteacher", "headteachers", "teaching union", "child poverty", "university funding", "universities", "ofsted", "tuition fees", "a-level", "a-levels", "gcse", "gcses", "nurseries", "nursery funding", "pupils", "school funding"],
-            healthy: ["obesity", "glp-1", "glp1", "wegovy", "ozempic", "mounjaro", "weight loss", "weight-loss", "nhs", "sugar tax", "junk food", "calorie", "calories", "diabetes", "public health", "vaping", "ultra-processed", "upf", "upfs"],
-            sustainable: ["climate change", "net zero", "net-zero", "carbon emissions", "green energy", "fossil fuel", "fossil fuels", "global warming", "heat pump", "heat pumps", "wind farm", "wind farms", "solar power", "cop28", "cop29", "cop30", "renewable energy", "renewables", "clean energy", "decarbonisation", "greenhouse gas", "climate target"]
+            fairer: [
+                "early years", "early years education", "education", "childcare", "school", "schools", 
+                "nursery", "nurseries", "pupil", "pupils", "teacher", "teachers", "child poverty", 
+                "university", "universities", "ofsted", "tuition", "a-level", "a-levels", "gcse", "gcses", 
+                "child", "children", "childhood", "growing up", "kids", "parenting", "youth", "maternity", "paternity"
+            ],
+            healthy: [
+                "health", "healthy eating", "obesity", "glp-1", "glp1", "wegovy", "ozempic", "mounjaro", 
+                "weight loss", "weight-loss", "weight", "public health", "public health strategy", 
+                "nhs", "sugar tax", "junk food", "calorie", "calories", "diabetes", "vaping", 
+                "ultra-processed", "upf", "upfs", "diet", "nutrition", "food policy", "health policy"
+            ],
+            sustainable: [
+                "climate", "climate change", "sustainability", "sustainable", "net zero", "net-zero", 
+                "carbon", "emissions", "green energy", "fossil fuel", "fossil fuels", "global warming", 
+                "environment", "environmental", "heat pump", "heat pumps", "wind farm", "wind farms", 
+                "solar", "cop28", "cop29", "cop30", "renewable", "renewables", "clean energy", 
+                "electricity", "power", "north sea oil", "north sea gas", "oil and gas", "energy bill", "energy bills"
+            ]
         };
 
-        // NEW: Specific Filter List for Trends Panel
         const trendKeywords = [
             ...keywords.fairer, ...keywords.healthy, ...keywords.sustainable,
             "uk politics", "politics", "economy", "uk economy", "ai", "artificial intelligence",
@@ -502,7 +515,6 @@
                 div.className = "news-card top-story-card";
                 const cleanTitle = story.title.replace(/<[^>]*>?/gm, ''); 
 
-                // NEW: Highly compressed Top Story HTML (No date, inline badge)
                 div.innerHTML = `
                     <h4>
                         <a href="${story.link}" target="_blank"><strong>${cleanTitle}</strong></a>
@@ -513,14 +525,13 @@
             });
         }
 
-        // Fetch 2: SOCIAL MEDIA TRENDS (Limited to 5 & Filtered to Mission/Politics/Economy/AI)
+        // Fetch 2: TRENDS
         async function loadTrends() {
             const container = document.getElementById("feed-trends");
-            // Pulling from multiple highly active UK subreddits to ensure we catch enough matching topics
             const trendUrls = [
                 'https://www.reddit.com/r/unitedkingdom/top.rss?t=day',
                 'https://www.reddit.com/r/ukpolitics/top.rss?t=day',
-                'https://www.reddit.com/r/technology/top.rss?t=day' // Catch AI trends
+                'https://www.reddit.com/r/technology/top.rss?t=day' 
             ];
             
             let allTrends = [];
@@ -534,7 +545,6 @@
                     if (data.status === 'ok' && data.items) {
                         data.items.forEach(item => {
                             const title = item.title || "Unknown";
-                            // FILTER: Only add to trends if it matches Missions, UK Politics, Econ, or AI
                             if (regTrendsFilter.test(title.toLowerCase())) {
                                 allTrends.push(item);
                             }
@@ -543,7 +553,6 @@
                 } catch (error) { console.warn("Failed fetching a trend source"); }
             }
 
-            // Deduplicate trends by title
             const uniqueTrends = [];
             const seen = new Set();
             for (const t of allTrends) {
@@ -553,7 +562,6 @@
                 }
             }
 
-            // LIMIT TO EXACTLY 5 TRENDS
             const top5 = uniqueTrends.slice(0, 5);
 
             container.innerHTML = ""; 
@@ -572,10 +580,11 @@
             }
         }
 
-        // Fetch 3: MISSIONS (Rotates)
+        // Fetch 3: MISSIONS (Rotates, Expanded to look back 72 hours)
         async function loadMissionStories() {
             let allMissionStories = [];
-            const thirtySixHoursAgo = Date.now() - (36 * 60 * 60 * 1000);
+            // Lookback extended to 72 hours to guarantee high volume of mission articles
+            const lookbackWindow = Date.now() - (72 * 60 * 60 * 1000);
 
             const fetchPromises = missionSources.map(async (source) => {
                 try {
@@ -594,7 +603,7 @@
                             const parsedDate = new Date(item.pubDate || "").getTime();
                             const articleTimestamp = isNaN(parsedDate) ? Date.now() : parsedDate;
                             
-                            if (articleTimestamp >= thirtySixHoursAgo) {
+                            if (articleTimestamp >= lookbackWindow) {
                                 const searchText = (title + " " + description).toLowerCase();
                                 if (regBlocklist.test(searchText)) return;
 
@@ -628,16 +637,14 @@
             });
         }
 
-        // Fetch 4: LATEST NESTA BLOGS
+        // Fetch 4: LATEST NESTA BLOGS (Using new user-provided RSS App Link)
         async function loadNestaBlogs() {
             const container = document.getElementById("feed-nesta");
             
-            // ACTION REQUIRED: If the dashboard fails to pull the Nesta blog natively,
-            // go to RSS.app, generate a feed for https://www.nesta.org.uk/blog/, and paste it below!
-            const nestaUrl = "https://rss.app/feeds/YOUR_NESTA_BLOG_URL_HERE.xml"; 
+            // Your new working RSS.app link specifically for Nesta blogs
+            const nestaUrl = "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml"; 
 
             try {
-                // We will default to assuming there is a standard RSS feed path
                 const fetchUrl = nestaUrl.includes("rss.app") ? nestaUrl : "https://www.nesta.org.uk/blog/feed/";
                 const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(fetchUrl)}`;
                 
@@ -669,7 +676,7 @@
                     throw new Error("No items found");
                 }
             } catch (error) {
-                container.innerHTML = `<div class="empty-state">No blogs loaded.<br><br><strong>Action required:</strong> Please create a free RSS.app feed for https://nesta.org.uk/blog and paste the URL into Line 600 of your code to activate this panel.</div>`;
+                container.innerHTML = `<div class="empty-state">Unable to load Nesta blogs at this time.</div>`;
             }
         }
 
@@ -730,10 +737,9 @@
 
         // --- 7. INDEPENDENT BOOTSTRAPPING ---
         async function bootDashboard() {
-            // Load everything independently
             loadTopStories();
             loadTrends();
-            loadNestaBlogs();
+            loadNestaBlogs(); // Now successfully utilizing your RSS.app feed
             
             await loadMissionStories(); 
             
