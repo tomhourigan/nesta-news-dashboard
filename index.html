@@ -73,15 +73,16 @@
             font-weight: bold;
         }
 
+        /* NEW 3-COLUMN LAYOUT */
         main {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 2rem;
             padding: 2rem 3rem;
             min-height: 80vh;
         }
 
-        .left-column {
+        .vertical-stack {
             display: flex;
             flex-direction: column;
             gap: 2rem;
@@ -106,7 +107,7 @@
             transition: border-top-color 0.3s ease, color 0.3s ease;
         }
 
-        #wrapper-top, #wrapper-trends { border-top: 6px solid var(--nesta-dark-blue); }
+        #wrapper-top, #wrapper-trends, #wrapper-nesta { border-top: 6px solid var(--nesta-dark-blue); }
         #wrapper-rotating { border-top: 6px solid var(--text-gray); }
 
         .mission-header {
@@ -191,21 +192,24 @@
         .news-card a { text-decoration: none; color: var(--text-dark); transition: color 0.2s; }
         .news-card a:hover { color: var(--nesta-primary-blue); }
 
-        /* Specific Shrunken Styles for Top UK Stories */
+        /* SPECIFIC: Shrunken Styles for Top UK Stories (No Date, Same Line) */
         #feed-top .news-card {
-            padding: 1rem 0; 
-        }
-        #feed-top .source-badge {
-            background-color: var(--nesta-dark-blue);
-            font-size: 0.7rem;
-            padding: 3px 8px;
+            padding: 0.85rem 0; 
         }
         #feed-top .meta-info {
-            margin-bottom: 6px;
+            display: none; /* Hides the top bar completely */
         }
         #feed-top .news-card h4 {
             font-size: 0.95rem; 
-            line-height: 1.3;
+            line-height: 1.4;
+        }
+        #feed-top .source-badge {
+            background-color: var(--nesta-dark-blue);
+            font-size: 0.65rem;
+            padding: 3px 6px;
+            margin-left: 8px;
+            vertical-align: middle;
+            display: inline-block;
         }
 
         /* Styles for Social Media Trends Box */
@@ -237,7 +241,6 @@
             color: var(--text-dark);
             text-decoration: none;
             transition: color 0.2s;
-            /* Elegantly truncates long social media topics to 2 lines */
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
@@ -256,6 +259,10 @@
             line-height: 1.5;
         }
         
+        /* Mobile Layout */
+        @media (max-width: 1200px) {
+            main { grid-template-columns: repeat(2, 1fr); }
+        }
         @media (max-width: 900px) {
             main { grid-template-columns: 1fr; }
             header { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
@@ -282,8 +289,8 @@
     </header>
     
     <main>
-        <!-- LEFT COLUMN: Top News & Trends -->
-        <div class="left-column">
+        <!-- COLUMN 1: Top News & Trends -->
+        <div class="vertical-stack">
             
             <section class="mission-col" id="col-top">
                 <div class="mission-header-wrapper" id="wrapper-top">
@@ -301,7 +308,7 @@
 
         </div>
 
-        <!-- RIGHT COLUMN: Missions (Rotates & Manual Navigation) -->
+        <!-- COLUMN 2: Missions (Rotates & Manual Navigation) -->
         <section class="mission-col" id="col-rotating">
             <div class="mission-header-wrapper" id="wrapper-rotating">
                 <h3 class="mission-header" id="rotating-header">Loading Missions...</h3>
@@ -311,6 +318,14 @@
                 </div>
             </div>
             <div class="feed-container" id="feed-rotating"></div>
+        </section>
+
+        <!-- COLUMN 3: Latest Nesta Blogs -->
+        <section class="mission-col" id="col-nesta">
+            <div class="mission-header-wrapper" id="wrapper-nesta">
+                <h3 class="mission-header">Latest Nesta Blogs</h3>
+            </div>
+            <div class="feed-container" id="feed-nesta"></div>
         </section>
     </main>
 
@@ -349,6 +364,7 @@
             { name: "ITV News", url: "https://rss.app/feeds/L9yrWziOwNyaJ0YV.xml" }
         ];
 
+        // Massively Expanded Mission Sources (Including Substack/Medium Workarounds)
         const missionSources = [
             { name: "BBC News", url: "http://feeds.bbci.co.uk/news/uk/rss.xml" },
             { name: "Sky News", url: "https://feeds.skynews.com/feeds/rss/home.xml" },
@@ -356,12 +372,25 @@
             { name: "The Guardian", url: "https://www.theguardian.com/uk/rss" },
             { name: "Guardian UK", url: "https://openrss.org/feed/www.theguardian.com/uk" },
             { name: "The Telegraph", url: "https://www.telegraph.co.uk/rss.xml" },
+            { name: "The Independent", url: "http://www.independent.co.uk/rss" },
+            { name: "HuffPost UK", url: "https://www.huffingtonpost.co.uk/feeds/index.xml" },
+            { name: "The Sun", url: "https://www.thesun.co.uk/feed/" },
+            { name: "Politics.co.uk", url: "https://www.politics.co.uk/feed/" },
+            { name: "The Mirror", url: "https://www.mirror.co.uk/?service=rss" },
+            { name: "Daily Express", url: "https://feeds.feedburner.com/daily-express-news-showbiz" },
+            { name: "Metro", url: "https://metro.co.uk/feed/" },
+            { name: "The Conversation", url: "https://theconversation.com/uk/articles.atom" },
             { name: "BBC Education", url: "http://feeds.bbci.co.uk/news/education/rss.xml" },
             { name: "BBC Health", url: "http://feeds.bbci.co.uk/news/health/rss.xml" },
             { name: "BBC Science/Env", url: "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml" },
-            { name: "Guardian Education", url: "https://www.theguardian.com/education/rss" },
-            { name: "Guardian Environment", url: "https://www.theguardian.com/environment/rss" },
-            { name: "Guardian Society", url: "https://www.theguardian.com/society/rss" }
+            
+            // Substack & Medium Workarounds
+            { name: "Medium", url: "https://medium.com/feed/tag/uk-politics" },
+            { name: "Medium", url: "https://medium.com/feed/tag/education" },
+            { name: "Medium", url: "https://medium.com/feed/tag/climate-change" },
+            { name: "Medium", url: "https://medium.com/feed/tag/health" },
+            // Bing News RSS targeted specifically at Substack & Medium domains
+            { name: "Substack / Medium", url: "https://www.bing.com/news/search?q=(site:substack.com+OR+site:medium.com)+AND+(politics+OR+education+OR+health+OR+climate+OR+obesity)&format=RSS" }
         ];
 
         const keywords = {
@@ -369,6 +398,15 @@
             healthy: ["obesity", "glp-1", "glp1", "wegovy", "ozempic", "mounjaro", "weight loss", "weight-loss", "nhs", "sugar tax", "junk food", "calorie", "calories", "diabetes", "public health", "vaping", "ultra-processed", "upf", "upfs"],
             sustainable: ["climate change", "net zero", "net-zero", "carbon emissions", "green energy", "fossil fuel", "fossil fuels", "global warming", "heat pump", "heat pumps", "wind farm", "wind farms", "solar power", "cop28", "cop29", "cop30", "renewable energy", "renewables", "clean energy", "decarbonisation", "greenhouse gas", "climate target"]
         };
+
+        // NEW: Specific Filter List for Trends Panel
+        const trendKeywords = [
+            ...keywords.fairer, ...keywords.healthy, ...keywords.sustainable,
+            "uk politics", "politics", "economy", "uk economy", "ai", "artificial intelligence",
+            "parliament", "westminster", "starmer", "keir starmer", "sunak", "rishi sunak",
+            "labour", "conservative", "tory", "tories", "lib dem", "reform uk", "gdp", "inflation",
+            "interest rates", "bank of england", "budget", "chancellor", "cabinet", "election"
+        ];
 
         const blocklist = [
             "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", "fashion", "designer", "actor", "actress", "film", "movie", "pop star", "album", "music",
@@ -386,6 +424,7 @@
         const regFairer = createRegex(keywords.fairer);
         const regHealthy = createRegex(keywords.healthy);
         const regSustainable = createRegex(keywords.sustainable);
+        const regTrendsFilter = createRegex(trendKeywords);
         const regBlocklist = createRegex(blocklist);
         const regSummaryBlocklist = createRegex(summaryBlocklist);
 
@@ -416,6 +455,7 @@
 
         // --- 5. FETCHERS ---
 
+        // Fetch 1: TOP UK STORIES
         async function loadTopStories() {
             const container = document.getElementById("feed-top");
             let stories = [];
@@ -457,44 +497,82 @@
             }
             
             container.innerHTML = "";
-            top5.forEach(story => container.appendChild(createStoryCard(story, true))); 
+            top5.forEach(story => {
+                const div = document.createElement("div");
+                div.className = "news-card top-story-card";
+                const cleanTitle = story.title.replace(/<[^>]*>?/gm, ''); 
+
+                // NEW: Highly compressed Top Story HTML (No date, inline badge)
+                div.innerHTML = `
+                    <h4>
+                        <a href="${story.link}" target="_blank"><strong>${cleanTitle}</strong></a>
+                        <span class="source-badge">${story.source}</span>
+                    </h4>
+                `;
+                container.appendChild(div);
+            });
         }
 
-        // --- SOCIAL MEDIA TRENDS UK (Reddit Fallback) ---
+        // Fetch 2: SOCIAL MEDIA TRENDS (Limited to 5 & Filtered to Mission/Politics/Economy/AI)
         async function loadTrends() {
             const container = document.getElementById("feed-trends");
-            // Pulls the absolute hottest daily topics being actively discussed by the UK public
-            const rssUrl = 'https://www.reddit.com/r/unitedkingdom/top.rss?t=day';
-            const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+            // Pulling from multiple highly active UK subreddits to ensure we catch enough matching topics
+            const trendUrls = [
+                'https://www.reddit.com/r/unitedkingdom/top.rss?t=day',
+                'https://www.reddit.com/r/ukpolitics/top.rss?t=day',
+                'https://www.reddit.com/r/technology/top.rss?t=day' // Catch AI trends
+            ];
             
-            try {
-                const response = await fetchWithTimeout(apiUrl, 8000);
-                const data = await response.json();
-                
-                if (data.status === 'ok' && data.items) {
-                    const top10 = data.items.slice(0, 10);
-                    container.innerHTML = ""; 
+            let allTrends = [];
+            
+            for (const rssUrl of trendUrls) {
+                try {
+                    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+                    const response = await fetchWithTimeout(apiUrl, 6000);
+                    const data = await response.json();
                     
-                    top10.forEach((item, index) => {
-                        const title = item.title || "Unknown Trend";
-                        
-                        const div = document.createElement("div");
-                        div.className = "trend-item";
-                        div.innerHTML = `
-                            <div class="trend-rank">#${index + 1}</div>
-                            <div class="trend-name"><a href="${item.link}" target="_blank">${title}</a></div>
-                        `;
-                        container.appendChild(div);
-                    });
-                } else {
-                    throw new Error("No trends found in feed.");
+                    if (data.status === 'ok' && data.items) {
+                        data.items.forEach(item => {
+                            const title = item.title || "Unknown";
+                            // FILTER: Only add to trends if it matches Missions, UK Politics, Econ, or AI
+                            if (regTrendsFilter.test(title.toLowerCase())) {
+                                allTrends.push(item);
+                            }
+                        });
+                    }
+                } catch (error) { console.warn("Failed fetching a trend source"); }
+            }
+
+            // Deduplicate trends by title
+            const uniqueTrends = [];
+            const seen = new Set();
+            for (const t of allTrends) {
+                if (!seen.has(t.title)) {
+                    uniqueTrends.push(t);
+                    seen.add(t.title);
                 }
-            } catch (error) {
-                console.error("Error fetching Trends:", error);
-                container.innerHTML = `<div class="empty-state">Unable to load social media trends right now.<br>Checking again soon...</div>`;
+            }
+
+            // LIMIT TO EXACTLY 5 TRENDS
+            const top5 = uniqueTrends.slice(0, 5);
+
+            container.innerHTML = ""; 
+            if (top5.length > 0) {
+                top5.forEach((item, index) => {
+                    const div = document.createElement("div");
+                    div.className = "trend-item";
+                    div.innerHTML = `
+                        <div class="trend-rank">#${index + 1}</div>
+                        <div class="trend-name"><a href="${item.link}" target="_blank">${item.title}</a></div>
+                    `;
+                    container.appendChild(div);
+                });
+            } else {
+                container.innerHTML = `<div class="empty-state">No major social media trends currently matching your policy filters.</div>`;
             }
         }
 
+        // Fetch 3: MISSIONS (Rotates)
         async function loadMissionStories() {
             let allMissionStories = [];
             const thirtySixHoursAgo = Date.now() - (36 * 60 * 60 * 1000);
@@ -550,6 +628,51 @@
             });
         }
 
+        // Fetch 4: LATEST NESTA BLOGS
+        async function loadNestaBlogs() {
+            const container = document.getElementById("feed-nesta");
+            
+            // ACTION REQUIRED: If the dashboard fails to pull the Nesta blog natively,
+            // go to RSS.app, generate a feed for https://www.nesta.org.uk/blog/, and paste it below!
+            const nestaUrl = "https://rss.app/feeds/YOUR_NESTA_BLOG_URL_HERE.xml"; 
+
+            try {
+                // We will default to assuming there is a standard RSS feed path
+                const fetchUrl = nestaUrl.includes("rss.app") ? nestaUrl : "https://www.nesta.org.uk/blog/feed/";
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(fetchUrl)}`;
+                
+                const response = await fetchWithTimeout(apiUrl, 8000);
+                const data = await response.json();
+                
+                if (data.status === 'ok' && data.items && data.items.length > 0) {
+                    container.innerHTML = "";
+                    const latest5 = data.items.slice(0, 5);
+                    
+                    latest5.forEach(story => {
+                        const div = document.createElement("div");
+                        div.className = "news-card";
+                        
+                        const storyDate = new Date(story.pubDate || Date.now());
+                        const dateStr = storyDate.toLocaleDateString("en-GB", { day:'numeric', month:'short', year:'numeric' });
+                        const cleanTitle = story.title.replace(/<[^>]*>?/gm, ''); 
+
+                        div.innerHTML = `
+                            <div class="meta-info">
+                                <span class="source-badge" style="background-color: var(--nesta-dark-blue);">Nesta Blog</span>
+                                <span class="date-text">${dateStr}</span>
+                            </div>
+                            <h4><a href="${story.link}" target="_blank"><strong>${cleanTitle}</strong></a></h4>
+                        `;
+                        container.appendChild(div);
+                    });
+                } else {
+                    throw new Error("No items found");
+                }
+            } catch (error) {
+                container.innerHTML = `<div class="empty-state">No blogs loaded.<br><br><strong>Action required:</strong> Please create a free RSS.app feed for https://nesta.org.uk/blog and paste the URL into Line 600 of your code to activate this panel.</div>`;
+            }
+        }
+
         // --- 6. RENDER LOGIC ---
         function renderRotatedMission() {
             const config = rotationConfig[currentRotationIndex];
@@ -571,7 +694,25 @@
             if (stories.length === 0) {
                 container.innerHTML = `<div class="empty-state">No policy-relevant stories published in the recent window.<br><br>Waiting for updates...</div>`;
             } else {
-                stories.forEach(story => container.appendChild(createStoryCard(story, false)));
+                stories.forEach(story => {
+                    const div = document.createElement("div");
+                    div.className = "news-card";
+                    
+                    const storyDate = new Date(story.timestamp);
+                    const timeStr = storyDate.toLocaleTimeString("en-GB", { hour: '2-digit', minute:'2-digit' });
+                    const today = new Date();
+                    let dayStr = (storyDate.getDate() === today.getDate() && storyDate.getMonth() === today.getMonth()) ? "Today" : "Yesterday";
+                    const cleanTitle = story.title.replace(/<[^>]*>?/gm, ''); 
+
+                    div.innerHTML = `
+                        <div class="meta-info">
+                            <span class="source-badge">${story.source}</span>
+                            <span class="date-text">${timeStr} (${dayStr})</span>
+                        </div>
+                        <h4><a href="${story.link}" target="_blank"><strong>${cleanTitle}</strong></a></h4>
+                    `;
+                    container.appendChild(div);
+                });
             }
         }
 
@@ -587,31 +728,12 @@
             rotationTimer = setInterval(autoRotate, 8000);
         }
 
-        function createStoryCard(story) {
-            const div = document.createElement("div");
-            div.className = "news-card";
-            
-            const storyDate = new Date(story.timestamp);
-            const timeStr = storyDate.toLocaleTimeString("en-GB", { hour: '2-digit', minute:'2-digit' });
-            
-            const today = new Date();
-            let dayStr = (storyDate.getDate() === today.getDate() && storyDate.getMonth() === today.getMonth()) ? "Today" : "Yesterday";
-            const cleanTitle = story.title.replace(/<[^>]*>?/gm, ''); 
-
-            div.innerHTML = `
-                <div class="meta-info">
-                    <span class="source-badge">${story.source}</span>
-                    <span class="date-text">${timeStr} (${dayStr})</span>
-                </div>
-                <h4><a href="${story.link}" target="_blank"><strong>${cleanTitle}</strong></a></h4>
-            `;
-            return div;
-        }
-
         // --- 7. INDEPENDENT BOOTSTRAPPING ---
         async function bootDashboard() {
+            // Load everything independently
             loadTopStories();
             loadTrends();
+            loadNestaBlogs();
             
             await loadMissionStories(); 
             
