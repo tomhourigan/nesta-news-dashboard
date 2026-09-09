@@ -73,12 +73,19 @@
             font-weight: bold;
         }
 
+        /* Update layout to accommodate a stacked left column */
         main {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 2rem;
             padding: 2rem 3rem;
             min-height: 80vh;
+        }
+
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
         }
 
         .mission-col {
@@ -91,7 +98,6 @@
             border: 1px solid #EAEAEA;
         }
 
-        /* Updated header styling to accommodate the navigation buttons */
         .mission-header-wrapper {
             display: flex;
             justify-content: space-between;
@@ -101,12 +107,12 @@
             transition: border-top-color 0.3s ease, color 0.3s ease;
         }
 
-        #wrapper-top { border-top: 6px solid var(--nesta-dark-blue); }
-        #wrapper-rotating { border-top: 6px solid var(--text-gray); /* Defaults before JS kicks in */ }
+        #wrapper-top, #wrapper-trends { border-top: 6px solid var(--nesta-dark-blue); }
+        #wrapper-rotating { border-top: 6px solid var(--text-gray); }
 
         .mission-header {
-            padding: 1.5rem;
-            font-size: 1.4rem;
+            padding: 1.25rem 1.5rem;
+            font-size: 1.3rem;
             font-weight: bold;
             margin: 0;
             color: var(--nesta-dark-blue);
@@ -155,15 +161,13 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        /* Standard News Card (For Rotating Missions) */
         .news-card {
             border-bottom: 1px solid #EAEAEA;
             padding: 1.5rem 0;
         }
-
-        .news-card:last-child {
-            border-bottom: none;
-        }
-
+        .news-card:last-child { border-bottom: none; }
+        
         .meta-info {
             display: flex;
             justify-content: space-between;
@@ -182,33 +186,60 @@
             letter-spacing: 0.5px;
         }
 
-        #col-top .source-badge {
+        .date-text { color: var(--text-gray); font-weight: bold; }
+        .news-card h4 { margin: 0; font-size: 1.15rem; line-height: 1.4; font-weight: normal; }
+        .news-card h4 strong { font-weight: bold; }
+        .news-card a { text-decoration: none; color: var(--text-dark); transition: color 0.2s; }
+        .news-card a:hover { color: var(--nesta-primary-blue); }
+
+        /* Specific Shrunken Styles for Top UK Stories */
+        #feed-top .news-card {
+            padding: 1rem 0; /* Tighter vertical spacing */
+        }
+        #feed-top .source-badge {
             background-color: var(--nesta-dark-blue);
+            font-size: 0.7rem;
+            padding: 3px 8px;
+        }
+        #feed-top .meta-info {
+            margin-bottom: 6px;
+        }
+        #feed-top .news-card h4 {
+            font-size: 0.95rem; /* Smaller font size */
+            line-height: 1.3;
         }
 
-        .date-text {
-            color: var(--text-gray);
+        /* Styles for Trends Box */
+        #feed-trends {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+        }
+        .trend-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #EAEAEA;
+        }
+        .trend-item:last-child {
+            border-bottom: none;
+        }
+        .trend-rank {
+            font-size: 1.1rem;
             font-weight: bold;
+            color: var(--nesta-primary-blue);
+            width: 35px;
         }
-
-        .news-card h4 {
-            margin: 0;
-            font-size: 1.15rem;
-            line-height: 1.4;
-            font-weight: normal; 
-        }
-
-        .news-card h4 strong {
+        .trend-name {
+            font-size: 0.95rem;
             font-weight: bold;
+            text-transform: capitalize;
         }
-
-        .news-card a {
-            text-decoration: none;
+        .trend-name a {
             color: var(--text-dark);
+            text-decoration: none;
             transition: color 0.2s;
         }
-
-        .news-card a:hover {
+        .trend-name a:hover {
             color: var(--nesta-primary-blue);
         }
 
@@ -247,15 +278,28 @@
     </header>
     
     <main>
-        <!-- Panel 1: Top Stories -->
-        <section class="mission-col" id="col-top">
-            <div class="mission-header-wrapper" id="wrapper-top">
-                <h3 class="mission-header">Top Stories</h3>
-            </div>
-            <div class="feed-container" id="feed-top"></div>
-        </section>
+        <!-- LEFT COLUMN: Top News & Trends -->
+        <div class="left-column">
+            
+            <!-- Panel 1: Top Stories -->
+            <section class="mission-col" id="col-top">
+                <div class="mission-header-wrapper" id="wrapper-top">
+                    <h3 class="mission-header">Top UK Stories Today</h3>
+                </div>
+                <div class="feed-container" id="feed-top"></div>
+            </section>
 
-        <!-- Panel 2: Missions (Rotates & Manual Navigation) -->
+            <!-- Panel 2: Google Trends -->
+            <section class="mission-col" id="col-trends">
+                <div class="mission-header-wrapper" id="wrapper-trends">
+                    <h3 class="mission-header">Top UK Trends Today</h3>
+                </div>
+                <div class="feed-container" id="feed-trends"></div>
+            </section>
+
+        </div>
+
+        <!-- RIGHT COLUMN: Missions (Rotates & Manual Navigation) -->
         <section class="mission-col" id="col-rotating">
             <div class="mission-header-wrapper" id="wrapper-rotating">
                 <h3 class="mission-header" id="rotating-header">Loading Missions...</h3>
@@ -276,9 +320,10 @@
             document.getElementById('date').textContent = now.toLocaleDateString('en-GB', { 
                 weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Europe/London' 
             });
+            // Removed "(UK)" from the time string as requested
             document.getElementById('time').textContent = now.toLocaleTimeString('en-GB', { 
                 hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/London' 
-            }) + ' (UK)';
+            });
         }
         setInterval(updateClock, 1000);
         updateClock();
@@ -317,9 +362,7 @@
             "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "macron", "germany", "scholz", "pentagon"
         ];
 
-        // NEW: Blocklist specifically to remove summary/newspaper round-ups from Top Stories
         const summaryBlocklist = ["front page", "what the papers say", "briefing", "round-up", "papers:", "newspaper", "at a glance", "catch up", "your morning", "evening news", "daily round-up"];
-
         const blockedUrlPaths = ["/world/", "/world-news/", "/us-news/", "/australia-news/", "/international/", "/global/"];
 
         function createRegex(keywordArray) {
@@ -346,11 +389,9 @@
 
         // --- SMART DEDUPLICATION LOGIC ---
         function isDuplicateTopic(newTitle, existingTitles) {
-            // Words we don't care about when comparing topics
             const stopWords = new Set(["this","that","with","from","your","what","have","they","will","when","who","some","make","like","time","just","know","take","into","year","them","want","work","than","now","could","other","over","then","good","only","would","also","back","after","use","two","how","our","first","well","way","even","new","because","any","these","give","day","most","us","and","the","for"]);
             
             function getSignificantWords(title) {
-                // Strip punctuation and isolate meaningful words > 3 letters
                 return title.toLowerCase().replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w));
             }
 
@@ -358,10 +399,8 @@
 
             for (const existing of existingTitles) {
                 const existWords = getSignificantWords(existing);
-                // Count how many significant words overlap between the two headlines
                 const intersection = newWords.filter(w => existWords.includes(w));
                 
-                // If 3 or more significant words match, it's almost certainly the same story
                 if (intersection.length >= 3) { 
                     return true;
                 }
@@ -369,7 +408,7 @@
             return false;
         }
 
-        // --- FETCH 1: UNFILTERED TOP STORIES ---
+        // --- FETCH 1: UNFILTERED TOP UK STORIES ---
         async function loadTopStories() {
             console.log("Fetching Top Stories...");
             let stories = [];
@@ -386,10 +425,7 @@
                             const description = item.description || "";
                             const searchText = (title + " " + description).toLowerCase();
 
-                            // Filter out "Summary / Headline / Briefing" articles
-                            if (regSummaryBlocklist.test(searchText)) {
-                                return;
-                            }
+                            if (regSummaryBlocklist.test(searchText)) return;
 
                             const parsedDate = new Date(item.pubDate || "").getTime();
                             const articleTimestamp = isNaN(parsedDate) ? Date.now() : parsedDate;
@@ -406,15 +442,13 @@
 
             await Promise.all(fetchPromises);
             
-            // Sort by newest
             stories.sort((a, b) => b.timestamp - a.timestamp);
             
-            // Deduplicate across broadcasters to ensure 5 unique topics
             const top5 = [];
             const existingTitles = [];
             
             for (const story of stories) {
-                if (top5.length >= 5) break; // Stop when we have 5 unique stories
+                if (top5.length >= 5) break; 
                 
                 if (!isDuplicateTopic(story.title, existingTitles)) {
                     top5.push(story);
@@ -427,7 +461,39 @@
             top5.forEach(story => container.appendChild(createStoryCard(story)));
         }
 
-        // --- FETCH 2: HIGHLY FILTERED MISSIONS ---
+        // --- FETCH 2: GOOGLE TRENDS UK ---
+        async function loadTrends() {
+            console.log("Fetching UK Google Trends...");
+            try {
+                // Fetch daily trending searches RSS specifically for Great Britain (GB)
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://trends.google.com/trends/trendingsearches/daily/rss?geo=GB')}`;
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                
+                if (data.status === 'ok' && data.items) {
+                    // Extract exactly top 10 trends
+                    const top10 = data.items.slice(0, 10);
+                    const container = document.getElementById("feed-trends");
+                    container.innerHTML = "";
+                    
+                    top10.forEach((item, index) => {
+                        const div = document.createElement("div");
+                        div.className = "trend-item";
+                        // Using the headline title as the trend term and linking directly to Google search results
+                        div.innerHTML = `
+                            <div class="trend-rank">#${index + 1}</div>
+                            <div class="trend-name"><a href="${item.link}" target="_blank">${item.title}</a></div>
+                        `;
+                        container.appendChild(div);
+                    });
+                }
+            } catch (error) {
+                console.error("Error fetching Google Trends:", error);
+                document.getElementById("feed-trends").innerHTML = `<div class="empty-state">Unable to load current trends.</div>`;
+            }
+        }
+
+        // --- FETCH 3: HIGHLY FILTERED MISSIONS ---
         async function loadMissionStories() {
             console.log("Fetching highly filtered Mission stories...");
             let allMissionStories = [];
@@ -445,7 +511,6 @@
                             const link = (item.link || "").toLowerCase();
                             const description = item.description || item.content || "";
                             
-                            // GEO-BLOCKING
                             if (blockedUrlPaths.some(path => link.includes(path))) return;
 
                             const parsedDate = new Date(item.pubDate || "").getTime();
@@ -454,12 +519,10 @@
                             if (articleTimestamp >= thirtySixHoursAgo) {
                                 const searchText = (title + " " + description).toLowerCase();
                                 
-                                // BLOCKLIST (Sports, Arts, International)
                                 if (regBlocklist.test(searchText)) return;
 
                                 let targetMission = null;
                                 
-                                // HIGH PRECISION MATCHING
                                 if (regFairer.test(searchText)) targetMission = "fairer";
                                 else if (regHealthy.test(searchText)) targetMission = "healthy";
                                 else if (regSustainable.test(searchText)) targetMission = "sustainable";
@@ -496,14 +559,12 @@
             const wrapper = document.getElementById("wrapper-rotating");
             const container = document.getElementById("feed-rotating");
 
-            // Update Header Title and Dynamic Accent Colour
             header.textContent = config.title;
             header.style.color = config.color;
             wrapper.style.borderTopColor = config.color;
 
-            // Trigger CSS fade animation
             container.classList.remove("fade-in");
-            void container.offsetWidth; // Force DOM reflow to restart animation
+            void container.offsetWidth; 
             container.classList.add("fade-in");
 
             container.innerHTML = "";
@@ -516,22 +577,15 @@
             }
         }
 
-        // Logic for automatic progression
         function autoRotate() {
             currentRotationIndex = (currentRotationIndex + 1) % 3;
             renderRotatedMission();
         }
 
-        // Logic for manual clicking of arrow buttons
         function navigateMission(direction) {
-            // Stop the current timer
             if (rotationTimer) clearInterval(rotationTimer);
-            
-            // Advance or reverse the index (adding 3 ensures we don't get a negative index)
             currentRotationIndex = (currentRotationIndex + direction + 3) % 3;
             renderRotatedMission();
-            
-            // Restart the timer so it resumes automatically after 8 seconds
             rotationTimer = setInterval(autoRotate, 8000);
         }
 
@@ -559,7 +613,8 @@
 
         // --- MASTER BOOTSTRAP ---
         async function bootDashboard() {
-            await Promise.all([loadTopStories(), loadMissionStories()]);
+            // Fetch everything simultaneously to speed up load time
+            await Promise.all([loadTopStories(), loadTrends(), loadMissionStories()]);
             
             if (rotationTimer) clearInterval(rotationTimer);
             renderRotatedMission();
