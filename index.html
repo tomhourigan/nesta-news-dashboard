@@ -280,7 +280,6 @@
         <!-- LEFT COLUMN: Top News & Trends -->
         <div class="left-column">
             
-            <!-- Panel 1: Top Stories -->
             <section class="mission-col" id="col-top">
                 <div class="mission-header-wrapper" id="wrapper-top">
                     <h3 class="mission-header">Top UK Stories Today</h3>
@@ -288,7 +287,6 @@
                 <div class="feed-container" id="feed-top"></div>
             </section>
 
-            <!-- Panel 2: Google Trends -->
             <section class="mission-col" id="col-trends">
                 <div class="mission-header-wrapper" id="wrapper-trends">
                     <h3 class="mission-header">Top UK Trends Today</h3>
@@ -325,7 +323,7 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        // --- 2. SAFE FETCH HELPER (Prevents the dashboard from hanging) ---
+        // --- 2. SAFE FETCH HELPER ---
         async function fetchWithTimeout(url, timeoutMs = 8000) {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -437,7 +435,7 @@
                             }
                         });
                     }
-                } catch (error) { console.warn(`Skipping ${source.name} in Top Stories (timeout/blocked).`); }
+                } catch (error) { console.warn(`Skipping ${source.name} in Top Stories.`); }
             });
 
             await Promise.all(fetchPromises);
@@ -457,50 +455,80 @@
             top5.forEach(story => container.appendChild(createStoryCard(story, true))); 
         }
 
+        // --- GOOGLE TRENDS FETCH WITH WATERFALL & OVERRIDE ---
         async function loadTrends() {
             const container = document.getElementById("feed-trends");
             const rssUrl = 'https://trends.google.com/trends/trendingsearches/daily/rss?geo=GB';
             
-            // Dual Proxy Fallback System for Google Trends
-            const proxy1 = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rssUrl)}`;
-            const proxy2 = `https://corsproxy.io/?${encodeURIComponent(rssUrl)}`;
+            // IF GOOGLE CONTINUES TO BLOCK FREE PROXIES:
+            // 1. Go to RSS.app and create a feed using the 'rssUrl' above.
+            // 2. Paste your new RSS.app XML link between the quotes below:
+            const rssAppOverrideUrl = ""; 
 
-            let xmlText = null;
-            try {
-                // Try Proxy 1
-                const response = await fetchWithTimeout(proxy1, 8000);
-                if (response.ok) { xmlText = await response.text(); } 
-                else { throw new Error("Proxy 1 Failed"); }
-            } catch (e) {
+            // Waterfall list of proxies to try sequentially
+            const proxyList = rssAppOverrideUrl ? 
+                [`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssAppOverrideUrl)}`] : [
+                `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`,
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}&t=${Date.now()}`,
+                `https://corsproxy.io/?${encodeURIComponent(rssUrl)}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rssUrl)}`
+            ];
+
+            let items = [];
+
+            // Try each proxy until one succeeds
+            for (let i = 0; i < proxyList.length; i++) {
                 try {
-                    // Try Proxy 2 instantly if Proxy 1 gets blocked
-                    const response2 = await fetchWithTimeout(proxy2, 8000);
-                    if (response2.ok) { xmlText = await response2.text(); }
-                } catch (e2) {
-                    console.warn("Both proxies failed to fetch Trends.");
+                    const response = await fetchWithTimeout(proxyList[i], 6000);
+                    if (!response.ok) continue;
+
+                    if (proxyList[i].includes('api.json')) {
+                        // Handle JSON parsing
+                        const data = await response.json();
+                        if (data.status === 'ok' && data.items && data.items.length > 0) {
+                            items = data.items;
+                            break; 
+                        }
+                    } else {
+                        // Handle XML parsing
+                        const xmlText = await response.text();
+                        if (xmlText.includes("<rss")) {
+                            const parser = new DOMParser();
+                            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+                            const xmlItems = Array.from(xmlDoc.querySelectorAll("item"));
+                            
+                            if (xmlItems.length > 0) {
+                                items = xmlItems.map(item => {
+                                    return { 
+                                        title: item.querySelector("title")?.textContent || "Unknown Trend",
+                                        link: `https://www.google.co.uk/search?q=${encodeURIComponent(item.querySelector("title")?.textContent)}` 
+                                    };
+                                });
+                                break; 
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn(`Trends Proxy ${i + 1} blocked, trying next...`);
                 }
             }
 
-            if (xmlText && xmlText.includes("<rss")) {
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-                const items = Array.from(xmlDoc.querySelectorAll("item")).slice(0, 10);
-                
+            if (items.length > 0) {
                 container.innerHTML = ""; 
-                items.forEach((item, index) => {
-                    const title = item.querySelector("title")?.textContent || "Unknown Trend";
-                    const searchUrl = `https://www.google.co.uk/search?q=${encodeURIComponent(title)}`;
+                items.slice(0, 10).forEach((item, index) => {
+                    const trendTitle = item.title;
+                    const searchUrl = item.link || `https://www.google.co.uk/search?q=${encodeURIComponent(trendTitle)}`;
                     
                     const div = document.createElement("div");
                     div.className = "trend-item";
                     div.innerHTML = `
                         <div class="trend-rank">#${index + 1}</div>
-                        <div class="trend-name"><a href="${searchUrl}" target="_blank">${title}</a></div>
+                        <div class="trend-name"><a href="${searchUrl}" target="_blank">${trendTitle}</a></div>
                     `;
                     container.appendChild(div);
                 });
             } else {
-                container.innerHTML = `<div class="empty-state">Unable to load current trends right now.<br>Checking again soon...</div>`;
+                container.innerHTML = `<div class="empty-state">Google is currently blocking free API access.<br><br>To fix permanently, see Line 461 in code.</div>`;
             }
         }
 
@@ -544,7 +572,7 @@
                             }
                         });
                     }
-                } catch (error) { console.warn(`Skipping ${source.name} in Missions (timeout/blocked).`); }
+                } catch (error) { console.warn(`Skipping ${source.name} in Missions.`); }
             });
 
             await Promise.all(fetchPromises);
@@ -617,13 +645,11 @@
             return div;
         }
 
-        // --- 7. INDEPENDENT BOOTSTRAPPING (Prevents full-screen hangs) ---
+        // --- 7. INDEPENDENT BOOTSTRAPPING ---
         async function bootDashboard() {
-            // Fire off Top Stories and Trends to load on their own immediately
             loadTopStories();
             loadTrends();
             
-            // Only strictly wait for Missions so we can start the rotation loop
             await loadMissionStories(); 
             
             if (rotationTimer) clearInterval(rotationTimer);
