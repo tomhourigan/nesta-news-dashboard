@@ -208,7 +208,7 @@
             line-height: 1.3;
         }
 
-        /* Styles for Google Trends Box */
+        /* Styles for Social Media Trends Box */
         #feed-trends {
             padding-top: 0.5rem;
             padding-bottom: 0.5rem;
@@ -216,7 +216,7 @@
         .trend-item {
             display: flex;
             align-items: center;
-            padding: 0.75rem 0;
+            padding: 0.85rem 0;
             border-bottom: 1px solid #EAEAEA;
         }
         .trend-item:last-child {
@@ -227,16 +227,21 @@
             font-weight: bold;
             color: var(--nesta-primary-blue);
             width: 35px;
+            flex-shrink: 0;
         }
         .trend-name {
             font-size: 0.95rem;
             font-weight: bold;
-            text-transform: capitalize;
         }
         .trend-name a {
             color: var(--text-dark);
             text-decoration: none;
             transition: color 0.2s;
+            /* Elegantly truncates long social media topics to 2 lines */
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
         .trend-name a:hover {
             color: var(--nesta-primary-blue);
@@ -289,7 +294,7 @@
 
             <section class="mission-col" id="col-trends">
                 <div class="mission-header-wrapper" id="wrapper-trends">
-                    <h3 class="mission-header">Top UK Trends Today</h3>
+                    <h3 class="mission-header">Top UK Social Media Trends</h3>
                 </div>
                 <div class="feed-container" id="feed-trends"></div>
             </section>
@@ -455,80 +460,38 @@
             top5.forEach(story => container.appendChild(createStoryCard(story, true))); 
         }
 
-        // --- GOOGLE TRENDS FETCH WITH WATERFALL & OVERRIDE ---
+        // --- SOCIAL MEDIA TRENDS UK (Reddit Fallback) ---
         async function loadTrends() {
             const container = document.getElementById("feed-trends");
-            const rssUrl = 'https://trends.google.com/trends/trendingsearches/daily/rss?geo=GB';
+            // Pulls the absolute hottest daily topics being actively discussed by the UK public
+            const rssUrl = 'https://www.reddit.com/r/unitedkingdom/top.rss?t=day';
+            const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
             
-            // IF GOOGLE CONTINUES TO BLOCK FREE PROXIES:
-            // 1. Go to RSS.app and create a feed using the 'rssUrl' above.
-            // 2. Paste your new RSS.app XML link between the quotes below:
-            const rssAppOverrideUrl = ""; 
-
-            // Waterfall list of proxies to try sequentially
-            const proxyList = rssAppOverrideUrl ? 
-                [`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssAppOverrideUrl)}`] : [
-                `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`,
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}&t=${Date.now()}`,
-                `https://corsproxy.io/?${encodeURIComponent(rssUrl)}`,
-                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rssUrl)}`
-            ];
-
-            let items = [];
-
-            // Try each proxy until one succeeds
-            for (let i = 0; i < proxyList.length; i++) {
-                try {
-                    const response = await fetchWithTimeout(proxyList[i], 6000);
-                    if (!response.ok) continue;
-
-                    if (proxyList[i].includes('api.json')) {
-                        // Handle JSON parsing
-                        const data = await response.json();
-                        if (data.status === 'ok' && data.items && data.items.length > 0) {
-                            items = data.items;
-                            break; 
-                        }
-                    } else {
-                        // Handle XML parsing
-                        const xmlText = await response.text();
-                        if (xmlText.includes("<rss")) {
-                            const parser = new DOMParser();
-                            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-                            const xmlItems = Array.from(xmlDoc.querySelectorAll("item"));
-                            
-                            if (xmlItems.length > 0) {
-                                items = xmlItems.map(item => {
-                                    return { 
-                                        title: item.querySelector("title")?.textContent || "Unknown Trend",
-                                        link: `https://www.google.co.uk/search?q=${encodeURIComponent(item.querySelector("title")?.textContent)}` 
-                                    };
-                                });
-                                break; 
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.warn(`Trends Proxy ${i + 1} blocked, trying next...`);
-                }
-            }
-
-            if (items.length > 0) {
-                container.innerHTML = ""; 
-                items.slice(0, 10).forEach((item, index) => {
-                    const trendTitle = item.title;
-                    const searchUrl = item.link || `https://www.google.co.uk/search?q=${encodeURIComponent(trendTitle)}`;
+            try {
+                const response = await fetchWithTimeout(apiUrl, 8000);
+                const data = await response.json();
+                
+                if (data.status === 'ok' && data.items) {
+                    const top10 = data.items.slice(0, 10);
+                    container.innerHTML = ""; 
                     
-                    const div = document.createElement("div");
-                    div.className = "trend-item";
-                    div.innerHTML = `
-                        <div class="trend-rank">#${index + 1}</div>
-                        <div class="trend-name"><a href="${searchUrl}" target="_blank">${trendTitle}</a></div>
-                    `;
-                    container.appendChild(div);
-                });
-            } else {
-                container.innerHTML = `<div class="empty-state">Google is currently blocking free API access.<br><br>To fix permanently, see Line 461 in code.</div>`;
+                    top10.forEach((item, index) => {
+                        const title = item.title || "Unknown Trend";
+                        
+                        const div = document.createElement("div");
+                        div.className = "trend-item";
+                        div.innerHTML = `
+                            <div class="trend-rank">#${index + 1}</div>
+                            <div class="trend-name"><a href="${item.link}" target="_blank">${title}</a></div>
+                        `;
+                        container.appendChild(div);
+                    });
+                } else {
+                    throw new Error("No trends found in feed.");
+                }
+            } catch (error) {
+                console.error("Error fetching Trends:", error);
+                container.innerHTML = `<div class="empty-state">Unable to load social media trends right now.<br>Checking again soon...</div>`;
             }
         }
 
