@@ -333,9 +333,11 @@
         // --- 1. CLOCK ---
         function updateClock() {
             const now = new Date();
-            document.getElementById('date').textContent = now.toLocaleDateString('en-GB', { 
+            const dateStr = now.toLocaleDateString('en-GB', { 
                 weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Europe/London' 
             });
+            // Strip the comma from the date string
+            document.getElementById('date').textContent = dateStr.replace(/,/g, '');
             document.getElementById('time').textContent = now.toLocaleTimeString('en-GB', { 
                 hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/London' 
             });
@@ -372,6 +374,8 @@
             { name: "Guardian UK", url: "https://openrss.org/feed/www.theguardian.com/uk" },
             { name: "The Telegraph", url: "https://www.telegraph.co.uk/rss.xml" },
             { name: "The Independent", url: "http://www.independent.co.uk/rss" },
+            { name: "Daily Mail", url: "https://www.dailymail.co.uk/articles.rss" },
+            { name: "Evening Standard", url: "https://www.standard.co.uk/rss" },
             { name: "HuffPost UK", url: "https://www.huffingtonpost.co.uk/feeds/index.xml" },
             { name: "The Sun", url: "https://www.thesun.co.uk/feed/" },
             { name: "Politics.co.uk", url: "https://www.politics.co.uk/feed/" },
@@ -382,11 +386,10 @@
             { name: "BBC Education", url: "http://feeds.bbci.co.uk/news/education/rss.xml" },
             { name: "BBC Health", url: "http://feeds.bbci.co.uk/news/health/rss.xml" },
             { name: "BBC Science/Env", url: "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml" },
-            { name: "Medium", url: "https://medium.com/feed/tag/uk-politics" },
-            { name: "Medium", url: "https://medium.com/feed/tag/education" },
-            { name: "Medium", url: "https://medium.com/feed/tag/climate-change" },
-            { name: "Medium", url: "https://medium.com/feed/tag/health" },
-            { name: "Substack / Medium", url: "https://www.bing.com/news/search?q=(site:substack.com+OR+site:medium.com)+AND+(politics+OR+education+OR+health+OR+climate+OR+obesity)&format=RSS" }
+            
+            // Substack and Medium (Using Google News RSS for better UK/Topic scoping)
+            { name: "Substack", url: "https://news.google.com/rss/search?q=site:substack.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" },
+            { name: "Medium", url: "https://news.google.com/rss/search?q=site:medium.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" }
         ];
 
         const keywords = {
@@ -420,11 +423,15 @@
         ];
 
         const blocklist = [
-            "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", "fashion", "designer", "actor", "actress", "film", "movie", "pop star", "album", "music",
+            "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", 
             "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "macron", "germany", "scholz", "pentagon"
         ];
 
+        // Specific blocklist to catch spammy Medium/Substack lifestyle posts
+        const blogSpamBlocklist = ["hair", "beauty", "skincare", "wellness", "yoga", "astrology", "horoscope", "crypto", "stress", "beautiful people", "lose weight fast", "diet plan", "workout", "muscle"];
+
         const summaryBlocklist = ["front page", "what the papers say", "briefing", "round-up", "papers:", "newspaper", "at a glance", "catch up", "your morning", "evening news", "daily round-up"];
+        const softNewsBlocklist = ["opinion:", "review:", "how to", "guide", "catherine", "kate middleton", "prince william", "prince harry", "meghan markle", "royal family", "charity climb"];
         const blockedUrlPaths = ["/world/", "/world-news/", "/us-news/", "/australia-news/", "/international/", "/global/"];
 
         function createRegex(keywordArray) {
@@ -437,7 +444,12 @@
         const regSustainable = createRegex(keywords.sustainable);
         const regTrendsFilter = createRegex(trendKeywords);
         const regBlocklist = createRegex(blocklist);
+        const regBlogSpam = createRegex(blogSpamBlocklist);
         const regSummaryBlocklist = createRegex(summaryBlocklist);
+        const regSoftNewsBlocklist = createRegex(softNewsBlocklist);
+        
+        // Catches standalone first-person pronouns for narrative articles
+        const firstPersonRegex = /\b(i|my|me|mine|we tried|i went)\b/i;
 
         let missionData = { fairer: [], healthy: [], sustainable: [] };
         let rotationTimer = null;
@@ -466,7 +478,7 @@
 
         // --- 5. FETCHERS ---
 
-        // Fetch 1: TOP UK STORIES
+        // Fetch 1: TOP UK STORIES (Strict Hard News Filter)
         async function loadTopStories() {
             const container = document.getElementById("feed-top");
             let stories = [];
@@ -481,7 +493,14 @@
                         data.items.forEach(item => {
                             const title = item.title || "";
                             const description = item.description || "";
-                            if (regSummaryBlocklist.test((title + " " + description).toLowerCase())) return;
+                            const searchText = (title + " " + description).toLowerCase();
+
+                            // Filter out summaries, round-ups, and soft/narrative news
+                            if (regSummaryBlocklist.test(searchText) || 
+                                regSoftNewsBlocklist.test(searchText) || 
+                                firstPersonRegex.test(title.toLowerCase())) {
+                                return;
+                            }
 
                             const parsedDate = new Date(item.pubDate || "").getTime();
                             const articleTimestamp = isNaN(parsedDate) ? Date.now() : parsedDate;
@@ -578,7 +597,7 @@
             }
         }
 
-        // Fetch 3: MISSIONS (Rotates, Expanded to look back 72 hours)
+        // Fetch 3: MISSIONS (Rotates, Looks back 72 hours, Prioritizes News over Blogs)
         async function loadMissionStories() {
             let allMissionStories = [];
             const lookbackWindow = Date.now() - (72 * 60 * 60 * 1000);
@@ -602,7 +621,9 @@
                             
                             if (articleTimestamp >= lookbackWindow) {
                                 const searchText = (title + " " + description).toLowerCase();
-                                if (regBlocklist.test(searchText)) return;
+                                
+                                // Catch standard blocklist and specific blog spam blocklist
+                                if (regBlocklist.test(searchText) || regBlogSpam.test(searchText)) return;
 
                                 let targetMission = null;
                                 if (regFairer.test(searchText)) targetMission = "fairer";
@@ -611,8 +632,12 @@
                                 
                                 if (targetMission) {
                                     if (!allMissionStories.some(s => s.link === item.link)) {
+                                        // Flag if it's a blog source so we can sort them lower later
+                                        const isBlog = source.name.includes("Substack") || source.name.includes("Medium");
+                                        
                                         allMissionStories.push({
-                                            title: item.title, link: item.link, source: source.name, targetMission, timestamp: articleTimestamp
+                                            title: item.title, link: item.link, source: source.name, 
+                                            targetMission, timestamp: articleTimestamp, isBlog: isBlog
                                         });
                                     }
                                 }
@@ -624,7 +649,13 @@
 
             await Promise.all(fetchPromises);
             
-            allMissionStories.sort((a, b) => b.timestamp - a.timestamp);
+            // SORTING LOGIC: Hard News Outlets (isBlog = false) always sit above Blogs (isBlog = true).
+            // Within those categories, they are sorted newest-first.
+            allMissionStories.sort((a, b) => {
+                if (a.isBlog !== b.isBlog) return a.isBlog ? 1 : -1;
+                return b.timestamp - a.timestamp;
+            });
+
             missionData = { fairer: [], healthy: [], sustainable: [] };
             
             allMissionStories.forEach(story => {
@@ -634,12 +665,12 @@
             });
         }
 
-        // Fetch 4: LATEST NESTA BLOGS (With Built-in Waterfall Proxy Fallback)
+        // Fetch 4: LATEST NESTA BLOGS 
         async function loadNestaBlogs() {
             const container = document.getElementById("feed-nesta");
+            // The custom RSS.app feed provided by the user
             const nestaUrl = "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml"; 
 
-            // Proxy Waterfall: Tries multiple free conversion proxies sequentially to bypass rate blocks
             const proxyList = [
                 `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(nestaUrl)}`,
                 `https://api.allorigins.win/raw?url=${encodeURIComponent(nestaUrl)}&t=${Date.now()}`,
@@ -654,7 +685,6 @@
                     if (!response.ok) continue;
 
                     if (proxyList[i].includes('api.json')) {
-                        // Standard rss2json parse
                         const data = await response.json();
                         if (data.status === 'ok' && data.items && data.items.length > 0) {
                             items = data.items.slice(0, 5).map(item => ({
@@ -665,7 +695,6 @@
                             break; 
                         }
                     } else {
-                        // Raw XML parse via allorigins or codetabs
                         const xmlText = await response.text();
                         if (xmlText.includes("<rss") || xmlText.includes("<feed")) {
                             const parser = new DOMParser();
@@ -679,9 +708,7 @@
                                     const pubDateNode = item.querySelector("pubDate, published, updated");
                                     
                                     let linkUrl = "";
-                                    if (linkNode) {
-                                        linkUrl = linkNode.textContent || linkNode.getAttribute("href") || "";
-                                    }
+                                    if (linkNode) linkUrl = linkNode.textContent || linkNode.getAttribute("href") || "";
 
                                     return {
                                         title: titleNode ? titleNode.textContent : "Nesta Blog",
@@ -693,9 +720,7 @@
                             }
                         }
                     }
-                } catch (e) {
-                    console.warn(`Nesta Blog Proxy ${i + 1} failed, trying next...`);
-                }
+                } catch (e) { console.warn(`Nesta Blog Proxy ${i + 1} failed, trying next...`); }
             }
 
             if (items.length > 0) {
@@ -705,7 +730,6 @@
                     div.className = "news-card";
                     
                     const storyDate = new Date(story.pubDate);
-                    // Ensure the date is valid before formatting
                     const validDate = isNaN(storyDate.getTime()) ? new Date() : storyDate;
                     const dateStr = validDate.toLocaleDateString("en-GB", { day:'numeric', month:'short', year:'numeric' });
                     const cleanTitle = story.title.replace(/<[^>]*>?/gm, ''); 
@@ -781,10 +805,9 @@
 
         // --- 7. INDEPENDENT BOOTSTRAPPING ---
         async function bootDashboard() {
-            // Load everything independently
             loadTopStories();
             loadTrends();
-            loadNestaBlogs();
+            loadNestaBlogs(); 
             
             await loadMissionStories(); 
             
