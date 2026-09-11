@@ -451,6 +451,17 @@
             { name: "Civil Service World", url: "https://news.google.com/rss/search?q=site:civilserviceworld.com&hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "HSJ", url: "https://news.google.com/rss/search?q=site:hsj.co.uk&hl=en-GB&gl=GB&ceid=GB:en" },
             
+            /* Newly Added UK News & Policy Feeds */
+            { name: "The Times", url: "https://openrss.org/feed/www.thetimes.com" },
+            { name: "iNews", url: "https://openrss.org/feed/inews.co.uk" },
+            { name: "Financial Times", url: "https://www.ft.com/news-feed?format=rss" },
+            { name: "GB News", url: "https://www.gbnews.com/feeds/news.rss" },
+            { name: "LBC", url: "https://openrss.org/feed/www.lbc.co.uk" },
+            { name: "Channel 4 News", url: "https://openrss.org/feed/www.channel4.com/news/feed" },
+            { name: "New Statesman", url: "https://openrss.org/feed/www.newstatesman.com/feed" },
+            { name: "Prospect Magazine", url: "https://openrss.org/feed/www.prospectmagazine.co.uk" },
+            { name: "The Scotsman", url: "https://openrss.org/feed/www.scotsman.com/rss" },
+
             { name: "Substack", url: "https://news.google.com/rss/search?q=site:substack.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "Medium", url: "https://news.google.com/rss/search?q=site:medium.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" },
 
@@ -519,7 +530,7 @@
             "labour", "conservative", "tory", "tories", "lib dem", "reform uk", "budget", "cabinet", "election"
         ];
 
-        // AGGRESSIVE BLOCKLISTS (Expanded to filter US political terms in Trends)
+        // AGGRESSIVE BLOCKLISTS
         const blocklist = [
             "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", 
             "german", "germany", "scholz", "berlin", "french", "france", "paris", "macron", "american", "america", "european union", "eu politics", "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "pentagon",
@@ -666,7 +677,6 @@
                 items.forEach(item => {
                     const title = item.title || "";
                     const lowerTitle = title.toLowerCase();
-                    // MUST match trend keywords AND MUST NOT match international/spam blocklists
                     if (regTrendsFilter.test(lowerTitle) && !regBlocklist.test(lowerTitle) && !regBlogSpam.test(lowerTitle)) {
                         allTrends.push({ title: title, link: item.link });
                     }
