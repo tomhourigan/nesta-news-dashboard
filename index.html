@@ -66,25 +66,25 @@
             padding-left: 1.5rem;
         }
 
-        /* UPDATED: Side-by-side Date & Time */
+        /* UPDATED: Date & Time inline to save space */
         .time-area {
             display: flex;
-            align-items: center;
+            align-items: baseline;
             gap: 12px;
             justify-content: flex-end;
         }
 
-        #time {
-            font-size: 1.5rem;
+        #date {
+            font-size: 1.1rem;
+            color: var(--text-gray);
             font-weight: bold;
-            color: var(--nesta-primary-blue);
             margin: 0;
         }
 
-        #date {
-            font-size: 0.95rem;
-            color: var(--text-gray);
+        #time {
+            font-size: 1.6rem;
             font-weight: bold;
+            color: var(--nesta-primary-blue);
             margin: 0;
         }
 
@@ -130,7 +130,9 @@
             flex-shrink: 0; 
         }
 
-        #wrapper-top, #wrapper-trends, #wrapper-nesta { border-top: 6px solid var(--nesta-dark-blue); }
+        /* Headers - Updated Nesta Blogs to use primary blue */
+        #wrapper-top, #wrapper-trends { border-top: 6px solid var(--nesta-dark-blue); }
+        #wrapper-nesta { border-top: 6px solid var(--nesta-primary-blue); } 
         #wrapper-rotating { border-top: 6px solid var(--text-gray); }
 
         .mission-header {
@@ -285,9 +287,9 @@
         <div class="brand-area">
             <div class="nesta-logo">
                 <img src="nesta-logo.png" alt="Nesta" onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='block';">
-                <!-- UPDATED TITLE -->
                 <div id="logo-fallback" style="display: none; font-family: 'Century Gothic', sans-serif; font-weight: bold; font-size: 30px; color: #0000ff; letter-spacing: -1.5px; line-height: 1; margin: 0;">nesta</div>
             </div>
+            <!-- Title changed to News Dashboard -->
             <div class="dashboard-title">News Dashboard</div>
         </div>
         <div class="time-area">
@@ -365,14 +367,13 @@
         }
 
         // --- 3. SOURCES & CONFIGURATION ---
-        // NEW: Added Google News UK to Top News Sources
+
+        // UPDATED: Exclusively use Google News UK for the Top Stories panel to guarantee high-quality hard news
         const topNewsSources = [
-            { name: "BBC News", url: "http://feeds.bbci.co.uk/news/uk/rss.xml" },
-            { name: "Sky News", url: "https://feeds.skynews.com/feeds/rss/home.xml" },
-            { name: "ITV News", url: "https://rss.app/feeds/L9yrWziOwNyaJ0YV.xml" },
             { name: "Google News UK", url: "https://news.google.com/rss/headlines/section/geo/GB?hl=en-GB&gl=GB&ceid=GB:en" }
         ];
 
+        // ADDED: Civil Service World and HSJ
         const missionSources = [
             { name: "BBC News", url: "http://feeds.bbci.co.uk/news/uk/rss.xml" },
             { name: "Sky News", url: "https://feeds.skynews.com/feeds/rss/home.xml" },
@@ -393,8 +394,16 @@
             { name: "BBC Education", url: "http://feeds.bbci.co.uk/news/education/rss.xml" },
             { name: "BBC Health", url: "http://feeds.bbci.co.uk/news/health/rss.xml" },
             { name: "BBC Science/Env", url: "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml" },
+            
+            // New specific sector sources
+            { name: "Civil Service World", url: "https://news.google.com/rss/search?q=site:civilserviceworld.com&hl=en-GB&gl=GB&ceid=GB:en" },
+            { name: "HSJ", url: "https://news.google.com/rss/search?q=site:hsj.co.uk&hl=en-GB&gl=GB&ceid=GB:en" },
+
+            // Substack and Medium
             { name: "Substack", url: "https://news.google.com/rss/search?q=site:substack.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "Medium", url: "https://news.google.com/rss/search?q=site:medium.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" },
+
+            // Google News UK Aggregators
             { name: "Google News UK", url: "https://news.google.com/rss/headlines/section/geo/GB?hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "Google News UK", url: "https://news.google.com/rss/search?q=(UK+OR+Britain)+AND+(childcare+OR+%22early+years%22+OR+%22child+poverty%22+OR+nursery+OR+ofsted)&hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "Google News UK", url: "https://news.google.com/rss/search?q=(UK+OR+Britain)+AND+(obesity+OR+%22junk+food%22+OR+wegovy+OR+ozempic+OR+%22sugar+tax%22)&hl=en-GB&gl=GB&ceid=GB:en" },
@@ -405,7 +414,7 @@
             { name: "Google News UK", url: "https://news.google.com/rss/search?q=(UK+OR+Britain)+AND+(housing+OR+%22house+building%22+OR+%22affordable+housing%22+OR+mortgages)&hl=en-GB&gl=GB&ceid=GB:en" }
         ];
 
-        // NEW: Hyper-Specific Devolution Keywords based on Gov.UK scope
+        // 7 THEMATIC DICTIONARIES
         const keywords = {
             fairer: [
                 "early years", "early childhood", "childcare", "nursery", "nurseries", "pre-school", "preschool", 
@@ -441,10 +450,11 @@
                 "automation", "algorithmic", "deepfake", "deepfakes", "tech regulation"
             ],
             devolution: [
-                "devolution deal", "devolution deals", "english devolution", "metro mayor", "metro mayors", 
+                "devolution", "devolved", "english devolution", "metro mayor", "metro mayors", 
                 "combined authority", "combined authorities", "regional mayor", "regional mayors", "regional government", 
                 "decentralisation", "decentralization", "levelling up", "local leaders", "powers for local leaders", 
-                "devolve power", "devolved powers", "local governance"
+                "devolve power", "devolved powers", "local governance", "local council", "local councils", "local government",
+                "government machinery"
             ],
             housing: [
                 "housing crisis", "affordable housing", "social housing", "house building", "planning permission", 
@@ -460,6 +470,7 @@
             "labour", "conservative", "tory", "tories", "lib dem", "reform uk", "budget", "cabinet", "election"
         ];
 
+        // AGGRESSIVE BLOCKLISTS (including Royal Family bans)
         const blocklist = [
             "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", 
             "german", "germany", "scholz", "berlin", "french", "france", "paris", "macron", "american", "america", "european union", "eu politics", "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "pentagon",
@@ -468,7 +479,10 @@
         
         const blogSpamBlocklist = ["hair", "beauty", "skincare", "wellness", "yoga", "astrology", "horoscope", "crypto", "stress", "beautiful people", "lose weight fast", "diet plan", "workout", "muscle", "spiritual"];
         const summaryBlocklist = ["front page", "what the papers say", "briefing", "round-up", "papers:", "newspaper", "at a glance", "catch up", "your morning", "evening news", "daily round-up"];
-        const softNewsBlocklist = ["catherine", "kate middleton", "princess of wales", "prince william", "prince harry", "meghan markle", "royal family", "royal visit", "bruce willis", "hospital appearance", "red carpet", "spotted", "gets candid", "box office"];
+        
+        // Explicitly banning all royal news and celebrity gossip
+        const softNewsBlocklist = ["catherine", "kate middleton", "princess of wales", "prince william", "prince harry", "meghan markle", "royal family", "royal visit", "bruce willis", "hospital appearance", "red carpet", "spotted", "gets candid", "box office", "diana", "princess diana", "king charles", "queen camilla", "royal", "royals", "outfit", "dress"];
+        
         const blockedUrlPaths = ["/world/", "/world-news/", "/us-news/", "/australia-news/", "/international/", "/global/", "/europe/", "/us/", "/asia/", "/africa/"];
 
         function createRegex(keywordArray) {
@@ -507,18 +521,25 @@
             { id: "housing", title: "Housing", color: "var(--housing)" }
         ];
 
-        // --- 4. SMART DEDUPLICATION LOGIC ---
+        // --- 4. SMART DEDUPLICATION LOGIC (FIXED FOR DECIMALS/PERCENTAGES) ---
         function isDuplicateTopic(newTitle, existingTitles) {
-            // Added more common stop words to ensure high accuracy when matching stories
             const stopWords = new Set(["this","that","with","from","your","what","have","they","will","when","who","some","make","like","time","just","know","take","into","year","them","want","work","than","now","could","other","over","then","good","only","would","also","back","after","use","two","how","our","first","well","way","even","new","because","any","these","give","day","most","us","and","the","for","more","has","was","are","out","says","said","its","can","not","all"]);
+            
             function getSignificantWords(title) {
-                return title.toLowerCase().replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w));
+                // IMPORTANT FIX: Using \.\% ensures "0.4%" is preserved and not chopped into "0" and "4".
+                return title.toLowerCase()
+                            .replace(/[^\w\s\.\%]/gi, '')
+                            .split(/\s+/)
+                            // Length check reduced to > 2 so 3-letter abbreviations (e.g. GDP) aren't destroyed
+                            .filter(w => w.length > 2 && !stopWords.has(w));
             }
+            
             const newWords = getSignificantWords(newTitle);
+            
             for (const existing of existingTitles) {
                 const existWords = getSignificantWords(existing);
                 const intersection = newWords.filter(w => existWords.includes(w));
-                // If 3 significant words match, it's considered the same story
+                // If 3 highly specific words match (e.g., "economy", "0.4%", "july"), it correctly spots the duplicate!
                 if (intersection.length >= 3) return true;
             }
             return false;
@@ -703,7 +724,6 @@
             missionData = { fairer: [], healthy: [], sustainable: [], economy: [], ai: [], devolution: [], housing: [] };
             const existingMissionTitles = { fairer: [], healthy: [], sustainable: [], economy: [], ai: [], devolution: [], housing: [] };
             
-            // UPDATED: Apply deduplication to all 7 mission/category columns
             allMissionStories.forEach(story => {
                 const target = story.targetMission;
                 if (missionData[target].length < 10) {
