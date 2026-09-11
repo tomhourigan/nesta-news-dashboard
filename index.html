@@ -73,6 +73,7 @@
             font-weight: bold;
         }
 
+        /* 3-COLUMN LAYOUT */
         main {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -241,6 +242,7 @@
             line-height: 1.5;
         }
         
+        /* Mobile Layout */
         @media (max-width: 1200px) { main { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 900px) {
             main { grid-template-columns: 1fr; }
@@ -362,19 +364,26 @@
             { name: "BBC Education", url: "http://feeds.bbci.co.uk/news/education/rss.xml" },
             { name: "BBC Health", url: "http://feeds.bbci.co.uk/news/health/rss.xml" },
             { name: "BBC Science/Env", url: "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml" },
-            // Substack and Medium (Using Google News RSS for better UK scoping)
+            
+            // Substack and Medium Feeds
             { name: "Substack", url: "https://news.google.com/rss/search?q=site:substack.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" },
-            { name: "Medium", url: "https://news.google.com/rss/search?q=site:medium.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" }
+            { name: "Medium", url: "https://news.google.com/rss/search?q=site:medium.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" },
+
+            // NEW: Google News UK (General & Topic Specific to drastically increase Mission hit rates)
+            { name: "Google News UK", url: "https://news.google.com/rss/headlines/section/geo/GB?hl=en-GB&gl=GB&ceid=GB:en" },
+            { name: "Google News UK", url: "https://news.google.com/rss/search?q=(UK+OR+Britain)+AND+(childcare+OR+%22early+years%22+OR+%22child+poverty%22+OR+nursery+OR+ofsted)&hl=en-GB&gl=GB&ceid=GB:en" },
+            { name: "Google News UK", url: "https://news.google.com/rss/search?q=(UK+OR+Britain)+AND+(obesity+OR+%22junk+food%22+OR+wegovy+OR+ozempic+OR+%22sugar+tax%22)&hl=en-GB&gl=GB&ceid=GB:en" },
+            { name: "Google News UK", url: "https://news.google.com/rss/search?q=(UK+OR+Britain)+AND+(%22heat+pump%22+OR+%22net+zero%22+OR+decarbonisation+OR+%22green+energy%22+OR+%22wind+farm%22)&hl=en-GB&gl=GB&ceid=GB:en" }
         ];
 
-        // MASSIVELY EXPANDED KEYWORDS BASED ON NESTA'S 2030 MISSIONS
+        // HIGHLY PRECISE KEYWORDS BASED ON NESTA'S 2030 MISSIONS
         const keywords = {
             fairer: [
-                "early years", "childcare", "nursery", "nurseries", "pre-school", "preschool", 
+                "early years", "early childhood", "childcare", "nursery", "nurseries", "pre-school", "preschool", 
                 "childminder", "childminders", "primary school", "primary schools", "primary education", 
                 "pupil", "pupils", "education policy", "child poverty", "maternity", "paternity", 
                 "child benefit", "sure start", "family hubs", "parenting interventions", "family support",
-                "early childhood", "early education", "early development", "key stage 1", "free school meals", 
+                "early education", "early development", "key stage 1", "free school meals", 
                 "ofsted", "childhood", "growing up", "kids", "education system", "school funding", "schools"
             ],
             healthy: [
@@ -402,17 +411,22 @@
             "interest rates", "bank of england", "budget", "chancellor", "cabinet", "election"
         ];
 
-        // BLOCKLISTS
+        // AGGRESSIVE GEO & SPAM BLOCKLISTS
         const blocklist = [
+            // Sports & Entertainment
             "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", 
-            "biden", "trump", "harris", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "indonesia",
+            // Aggressive International Filtering
+            "german", "germany", "scholz", "berlin", "french", "france", "paris", "macron", "american", "america", "european union", "eu politics", "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "pentagon",
+            // Unrelated Demographics (Older kids)
             "teenager", "teenagers", "teens", "university", "universities", "gcse", "gcses", "a-level", "a-levels", "higher education", "student", "students", "campus"
         ];
         
         const blogSpamBlocklist = ["hair", "beauty", "skincare", "wellness", "yoga", "astrology", "horoscope", "crypto", "stress", "beautiful people", "lose weight fast", "diet plan", "workout", "muscle", "spiritual"];
         const summaryBlocklist = ["front page", "what the papers say", "briefing", "round-up", "papers:", "newspaper", "at a glance", "catch up", "your morning", "evening news", "daily round-up"];
         const softNewsBlocklist = ["catherine", "kate middleton", "princess of wales", "prince william", "prince harry", "meghan markle", "royal family", "royal visit", "bruce willis", "hospital appearance", "red carpet", "spotted", "gets candid"];
-        const blockedUrlPaths = ["/world/", "/world-news/", "/us-news/", "/australia-news/", "/international/", "/global/"];
+        
+        // URL Path blockers now catch explicit international sections
+        const blockedUrlPaths = ["/world/", "/world-news/", "/us-news/", "/australia-news/", "/international/", "/global/", "/europe/", "/us/", "/asia/", "/africa/"];
 
         function createRegex(keywordArray) {
             const escapedWords = keywordArray.map(kw => kw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'));
@@ -475,7 +489,6 @@
                             const description = item.description || "";
                             const searchText = (title + " " + description).toLowerCase();
 
-                            // Filter out soft news, summaries, royals, and narrative first-person pieces
                             if (regSummaryBlocklist.test(searchText) || 
                                 regSoftNewsBlocklist.test(searchText) || 
                                 firstPersonRegex.test(title)) {
@@ -577,11 +590,11 @@
             }
         }
 
-        // Fetch 3: MISSIONS
+        // Fetch 3: MISSIONS (Rotates, Looks back 5 Days / 120 Hours)
         async function loadMissionStories() {
             let allMissionStories = [];
-            // Lookback extended to 72 hours for high volume
-            const lookbackWindow = Date.now() - (72 * 60 * 60 * 1000);
+            // MASSIVE 5-DAY LOOKBACK (120 hours) ensures high volume of content
+            const lookbackWindow = Date.now() - (120 * 60 * 60 * 1000);
 
             const fetchPromises = missionSources.map(async (source) => {
                 try {
@@ -603,7 +616,7 @@
                             if (articleTimestamp >= lookbackWindow) {
                                 const searchText = (title + " " + description).toLowerCase();
                                 
-                                // Block specific spam and soft news
+                                // Aggressive geo, soft news, and spam blocking
                                 if (regBlocklist.test(searchText) || regBlogSpam.test(searchText) || regSoftNewsBlocklist.test(searchText)) return;
 
                                 let targetMission = null;
@@ -629,7 +642,7 @@
 
             await Promise.all(fetchPromises);
             
-            // SORTING LOGIC: Hard News Outlets sit above Blogs
+            // SORTING LOGIC: Hard News Outlets (isBlog = false) always sit above Blogs (isBlog = true).
             allMissionStories.sort((a, b) => {
                 if (a.isBlog !== b.isBlog) return a.isBlog ? 1 : -1;
                 return b.timestamp - a.timestamp;
@@ -637,7 +650,6 @@
 
             missionData = { fairer: [], healthy: [], sustainable: [] };
             
-            // Allow up to 10 articles per mission
             allMissionStories.forEach(story => {
                 if (missionData[story.targetMission].length < 10) {
                     missionData[story.targetMission].push(story);
@@ -648,7 +660,6 @@
         // Fetch 4: LATEST NESTA BLOGS 
         async function loadNestaBlogs() {
             const container = document.getElementById("feed-nesta");
-            // The custom RSS.app feed provided by you
             const nestaUrl = "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml"; 
 
             const proxyList = [
@@ -758,6 +769,13 @@
                     const timeStr = storyDate.toLocaleTimeString("en-GB", { hour: '2-digit', minute:'2-digit' });
                     const today = new Date();
                     let dayStr = (storyDate.getDate() === today.getDate() && storyDate.getMonth() === today.getMonth()) ? "Today" : "Yesterday";
+                    
+                    // If older than yesterday, show the actual date (e.g. 10 Sep) to make 5-day lookback clearer
+                    const isOlderThanYesterday = (today - storyDate) > (48 * 60 * 60 * 1000);
+                    if (isOlderThanYesterday) {
+                        dayStr = storyDate.toLocaleDateString("en-GB", { day:'numeric', month:'short' });
+                    }
+
                     const cleanTitle = story.title.replace(/<[^>]*>?/gm, ''); 
 
                     div.innerHTML = `
