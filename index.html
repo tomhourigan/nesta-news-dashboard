@@ -13,14 +13,15 @@
             --text-dark: #1A1A1A;
             --text-gray: #666666;
             
-            /* Mission & Subject Accents */
+            /* Mission, Subject & Feature Accents */
             --fairer-start: #FF5A36;     
             --healthy-life: #00C8FF;     
             --sustainable: #00E59B;      
             --economy: #D942A6;       
             --ai: #4B38D3;            
             --devolution: #FFB800;    
-            --housing: #00A388;       
+            --housing: #00A388;
+            --trending: #9D2BFE; /* Electric Purple */
         }
 
         body {
@@ -66,7 +67,6 @@
             padding-left: 1.5rem;
         }
 
-        /* UPDATED: Date & Time inline to save space */
         .time-area {
             display: flex;
             align-items: baseline;
@@ -130,8 +130,8 @@
             flex-shrink: 0; 
         }
 
-        /* Headers - Updated Nesta Blogs to use primary blue */
-        #wrapper-top, #wrapper-trends { border-top: 6px solid var(--nesta-dark-blue); }
+        #wrapper-top { border-top: 6px solid var(--nesta-dark-blue); }
+        #wrapper-trends { border-top: 6px solid var(--trending); }
         #wrapper-nesta { border-top: 6px solid var(--nesta-primary-blue); } 
         #wrapper-rotating { border-top: 6px solid var(--text-gray); }
 
@@ -142,6 +142,10 @@
             margin: 0;
             color: var(--nesta-dark-blue);
             transition: color 0.3s ease;
+        }
+
+        #wrapper-trends .mission-header {
+            color: var(--trending);
         }
 
         .mission-controls {
@@ -241,7 +245,7 @@
         .trend-rank {
             font-size: 1.1rem;
             font-weight: bold;
-            color: var(--nesta-primary-blue);
+            color: var(--trending);
             width: 35px;
             flex-shrink: 0;
         }
@@ -255,7 +259,7 @@
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
-        .trend-name a:hover { color: var(--nesta-primary-blue); }
+        .trend-name a:hover { color: var(--trending); }
 
         .empty-state {
             padding: 2rem 1rem;
@@ -289,7 +293,6 @@
                 <img src="nesta-logo.png" alt="Nesta" onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='block';">
                 <div id="logo-fallback" style="display: none; font-family: 'Century Gothic', sans-serif; font-weight: bold; font-size: 30px; color: #0000ff; letter-spacing: -1.5px; line-height: 1; margin: 0;">nesta</div>
             </div>
-            <!-- Title changed to News Dashboard -->
             <div class="dashboard-title">News Dashboard</div>
         </div>
         <div class="time-area">
@@ -352,7 +355,7 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        // --- 2. SAFE FETCH HELPER ---
+        // --- 2. UNIVERSAL SAFE FETCH (PROXY WATERFALL) ---
         async function fetchWithTimeout(url, timeoutMs = 8000) {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -366,14 +369,67 @@
             }
         }
 
+        async function fetchRSS(sourceName, url) {
+            let items = [];
+            
+            const proxyList = [
+                `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`,
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}&t=${Date.now()}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+            ];
+
+            for (let i = 0; i < proxyList.length; i++) {
+                try {
+                    const response = await fetchWithTimeout(proxyList[i], 6000);
+                    if (!response.ok) continue;
+
+                    if (proxyList[i].includes('api.json')) {
+                        const data = await response.json();
+                        if (data.status === 'ok' && data.items && data.items.length > 0) {
+                            items = data.items;
+                            break;
+                        }
+                    } else {
+                        const xmlText = await response.text();
+                        if (xmlText.includes("<rss") || xmlText.includes("<feed")) {
+                            const parser = new DOMParser();
+                            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+                            const xmlItems = Array.from(xmlDoc.querySelectorAll("item, entry"));
+                            if (xmlItems.length > 0) {
+                                items = xmlItems.map(item => {
+                                    const titleNode = item.querySelector("title");
+                                    const linkNode = item.querySelector("link");
+                                    const pubDateNode = item.querySelector("pubDate, published, updated");
+                                    const descNode = item.querySelector("description, summary, content");
+                                    
+                                    let linkUrl = "";
+                                    if (linkNode) linkUrl = linkNode.textContent || linkNode.getAttribute("href") || "";
+
+                                    return {
+                                        title: titleNode ? titleNode.textContent : "",
+                                        link: linkUrl,
+                                        description: descNode ? descNode.textContent : "",
+                                        pubDate: pubDateNode ? pubDateNode.textContent : Date.now()
+                                    };
+                                });
+                                break;
+                            }
+                        }
+                    }
+                } catch (e) { } 
+            }
+            return items;
+        }
+
         // --- 3. SOURCES & CONFIGURATION ---
 
-        // UPDATED: Exclusively use Google News UK for the Top Stories panel to guarantee high-quality hard news
         const topNewsSources = [
+            { name: "BBC News", url: "http://feeds.bbci.co.uk/news/uk/rss.xml" },
+            { name: "Sky News", url: "https://feeds.skynews.com/feeds/rss/home.xml" },
+            { name: "ITV News", url: "https://rss.app/feeds/L9yrWziOwNyaJ0YV.xml" },
             { name: "Google News UK", url: "https://news.google.com/rss/headlines/section/geo/GB?hl=en-GB&gl=GB&ceid=GB:en" }
         ];
 
-        // ADDED: Civil Service World and HSJ
         const missionSources = [
             { name: "BBC News", url: "http://feeds.bbci.co.uk/news/uk/rss.xml" },
             { name: "Sky News", url: "https://feeds.skynews.com/feeds/rss/home.xml" },
@@ -391,20 +447,12 @@
             { name: "Daily Express", url: "https://feeds.feedburner.com/daily-express-news-showbiz" },
             { name: "Metro", url: "https://metro.co.uk/feed/" },
             { name: "The Conversation", url: "https://theconversation.com/uk/articles.atom" },
-            { name: "BBC Education", url: "http://feeds.bbci.co.uk/news/education/rss.xml" },
-            { name: "BBC Health", url: "http://feeds.bbci.co.uk/news/health/rss.xml" },
-            { name: "BBC Science/Env", url: "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml" },
-            
-            // New specific sector sources
             { name: "Civil Service World", url: "https://news.google.com/rss/search?q=site:civilserviceworld.com&hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "HSJ", url: "https://news.google.com/rss/search?q=site:hsj.co.uk&hl=en-GB&gl=GB&ceid=GB:en" },
-
-            // Substack and Medium
+            
             { name: "Substack", url: "https://news.google.com/rss/search?q=site:substack.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "Medium", url: "https://news.google.com/rss/search?q=site:medium.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" },
 
-            // Google News UK Aggregators
-            { name: "Google News UK", url: "https://news.google.com/rss/headlines/section/geo/GB?hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "Google News UK", url: "https://news.google.com/rss/search?q=(UK+OR+Britain)+AND+(childcare+OR+%22early+years%22+OR+%22child+poverty%22+OR+nursery+OR+ofsted)&hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "Google News UK", url: "https://news.google.com/rss/search?q=(UK+OR+Britain)+AND+(obesity+OR+%22junk+food%22+OR+wegovy+OR+ozempic+OR+%22sugar+tax%22)&hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "Google News UK", url: "https://news.google.com/rss/search?q=(UK+OR+Britain)+AND+(%22heat+pump%22+OR+%22net+zero%22+OR+decarbonisation+OR+%22green+energy%22+OR+%22wind+farm%22)&hl=en-GB&gl=GB&ceid=GB:en" },
@@ -450,7 +498,7 @@
                 "automation", "algorithmic", "deepfake", "deepfakes", "tech regulation"
             ],
             devolution: [
-                "devolution", "devolved", "english devolution", "metro mayor", "metro mayors", 
+                "devolution deal", "devolution deals", "english devolution", "metro mayor", "metro mayors", 
                 "combined authority", "combined authorities", "regional mayor", "regional mayors", "regional government", 
                 "decentralisation", "decentralization", "levelling up", "local leaders", "powers for local leaders", 
                 "devolve power", "devolved powers", "local governance", "local council", "local councils", "local government",
@@ -470,7 +518,7 @@
             "labour", "conservative", "tory", "tories", "lib dem", "reform uk", "budget", "cabinet", "election"
         ];
 
-        // AGGRESSIVE BLOCKLISTS (including Royal Family bans)
+        // AGGRESSIVE BLOCKLISTS
         const blocklist = [
             "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", 
             "german", "germany", "scholz", "berlin", "french", "france", "paris", "macron", "american", "america", "european union", "eu politics", "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "pentagon",
@@ -479,8 +527,6 @@
         
         const blogSpamBlocklist = ["hair", "beauty", "skincare", "wellness", "yoga", "astrology", "horoscope", "crypto", "stress", "beautiful people", "lose weight fast", "diet plan", "workout", "muscle", "spiritual"];
         const summaryBlocklist = ["front page", "what the papers say", "briefing", "round-up", "papers:", "newspaper", "at a glance", "catch up", "your morning", "evening news", "daily round-up"];
-        
-        // Explicitly banning all royal news and celebrity gossip
         const softNewsBlocklist = ["catherine", "kate middleton", "princess of wales", "prince william", "prince harry", "meghan markle", "royal family", "royal visit", "bruce willis", "hospital appearance", "red carpet", "spotted", "gets candid", "box office", "diana", "princess diana", "king charles", "queen camilla", "royal", "royals", "outfit", "dress"];
         
         const blockedUrlPaths = ["/world/", "/world-news/", "/us-news/", "/australia-news/", "/international/", "/global/", "/europe/", "/us/", "/asia/", "/africa/"];
@@ -505,7 +551,8 @@
         const regBlogSpam = createRegex(blogSpamBlocklist);
         const regSummaryBlocklist = createRegex(summaryBlocklist);
         const regSoftNewsBlocklist = createRegex(softNewsBlocklist);
-        const firstPersonRegex = /^(I |My |Why I |How I |We tried |I went )/i;
+        
+        const firstPersonRegex = /^['"‘“]?(I |My |Why I |How I |We tried |I went )/i;
 
         let missionData = { fairer: [], healthy: [], sustainable: [], economy: [], ai: [], devolution: [], housing: [] };
         let rotationTimer = null;
@@ -521,25 +568,21 @@
             { id: "housing", title: "Housing", color: "var(--housing)" }
         ];
 
-        // --- 4. SMART DEDUPLICATION LOGIC (FIXED FOR DECIMALS/PERCENTAGES) ---
+        // --- 4. SMART DEDUPLICATION LOGIC ---
         function isDuplicateTopic(newTitle, existingTitles) {
-            const stopWords = new Set(["this","that","with","from","your","what","have","they","will","when","who","some","make","like","time","just","know","take","into","year","them","want","work","than","now","could","other","over","then","good","only","would","also","back","after","use","two","how","our","first","well","way","even","new","because","any","these","give","day","most","us","and","the","for","more","has","was","are","out","says","said","its","can","not","all"]);
+            const stopWords = new Set(["this","that","with","from","your","what","have","they","will","when","who","some","make","like","time","just","know","take","into","year","them","want","work","than","now","could","other","over","then","good","only","would","also","back","after","use","two","how","our","first","well","way","even","new","because","any","these","give","day","most","us","and","the","for","more","has","was","are","out","says","said","its","can","not","all","news","live","update","updates","report","video"]);
             
             function getSignificantWords(title) {
-                // IMPORTANT FIX: Using \.\% ensures "0.4%" is preserved and not chopped into "0" and "4".
                 return title.toLowerCase()
                             .replace(/[^\w\s\.\%]/gi, '')
                             .split(/\s+/)
-                            // Length check reduced to > 2 so 3-letter abbreviations (e.g. GDP) aren't destroyed
                             .filter(w => w.length > 2 && !stopWords.has(w));
             }
             
             const newWords = getSignificantWords(newTitle);
-            
             for (const existing of existingTitles) {
                 const existWords = getSignificantWords(existing);
                 const intersection = newWords.filter(w => existWords.includes(w));
-                // If 3 highly specific words match (e.g., "economy", "0.4%", "july"), it correctly spots the duplicate!
                 if (intersection.length >= 3) return true;
             }
             return false;
@@ -553,28 +596,21 @@
             let stories = [];
             
             const fetchPromises = topNewsSources.map(async (source) => {
-                try {
-                    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(source.url)}`;
-                    const response = await fetchWithTimeout(apiUrl);
-                    const data = await response.json();
+                const items = await fetchRSS(source.name, source.url);
+                items.forEach(item => {
+                    const title = item.title || "";
+                    const description = item.description || "";
+                    const searchText = (title + " " + description).toLowerCase();
+
+                    if (regSummaryBlocklist.test(searchText) || regSoftNewsBlocklist.test(searchText) || firstPersonRegex.test(title)) return;
+
+                    const parsedDate = new Date(item.pubDate || "").getTime();
+                    const articleTimestamp = isNaN(parsedDate) ? Date.now() : parsedDate;
                     
-                    if (data.status === 'ok' && data.items) {
-                        data.items.forEach(item => {
-                            const title = item.title || "";
-                            const description = item.description || "";
-                            const searchText = (title + " " + description).toLowerCase();
-
-                            if (regSummaryBlocklist.test(searchText) || regSoftNewsBlocklist.test(searchText) || firstPersonRegex.test(title)) return;
-
-                            const parsedDate = new Date(item.pubDate || "").getTime();
-                            const articleTimestamp = isNaN(parsedDate) ? Date.now() : parsedDate;
-                            
-                            if (!stories.some(s => s.link === item.link)) {
-                                stories.push({ title: item.title, link: item.link, source: source.name, timestamp: articleTimestamp });
-                            }
-                        });
+                    if (!stories.some(s => s.link === item.link)) {
+                        stories.push({ title: item.title, link: item.link, source: source.name, timestamp: articleTimestamp });
                     }
-                } catch (error) { console.warn(`Skipping ${source.name} in Top Stories.`); }
+                });
             });
 
             await Promise.all(fetchPromises);
@@ -590,6 +626,11 @@
                 }
             }
             
+            if(top5.length === 0) {
+                container.innerHTML = `<div class="empty-state">Loading latest news...</div>`;
+                return;
+            }
+
             container.innerHTML = "";
             top5.forEach(story => {
                 const div = document.createElement("div");
@@ -606,40 +647,63 @@
             });
         }
 
-        // Fetch 2: TRENDS
+        // Fetch 2: TRENDS (Hybrid Velocity Model: Reddit Real-Time Hot + Wikimedia Surge Tracker)
         async function loadTrends() {
             const container = document.getElementById("feed-trends");
-            const trendUrls = [
-                'https://www.reddit.com/r/unitedkingdom/top.rss?t=day',
-                'https://www.reddit.com/r/ukpolitics/top.rss?t=day',
-                'https://www.reddit.com/r/technology/top.rss?t=day' 
+            
+            const redditUrls = [
+                'https://www.reddit.com/r/ukpolitics/hot.rss',
+                'https://www.reddit.com/r/unitedkingdom/hot.rss',
+                'https://www.reddit.com/r/UKNews/hot.rss'
             ];
             
             let allTrends = [];
-            
-            for (const rssUrl of trendUrls) {
-                try {
-                    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
-                    const response = await fetchWithTimeout(apiUrl, 6000);
-                    const data = await response.json();
-                    
-                    if (data.status === 'ok' && data.items) {
-                        data.items.forEach(item => {
-                            const title = item.title || "Unknown";
-                            if (regTrendsFilter.test(title.toLowerCase())) {
-                                allTrends.push(item);
-                            }
-                        });
+
+            for (const rssUrl of redditUrls) {
+                const items = await fetchRSS("Reddit", rssUrl);
+                items.forEach(item => {
+                    const title = item.title || "";
+                    if (regTrendsFilter.test(title.toLowerCase())) {
+                        allTrends.push({ title: title, link: item.link });
                     }
-                } catch (error) { console.warn("Failed fetching a trend source"); }
+                });
+            }
+
+            try {
+                const yesterday = new Date(Date.now() - 86400000);
+                const year = yesterday.getFullYear();
+                const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+                const day = String(yesterday.getDate()).padStart(2, '0');
+                
+                const wikiApiUrl = `https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/${year}/${month}/${day}`;
+                const wikiRes = await fetchWithTimeout(wikiApiUrl, 4000);
+                if (wikiRes.ok) {
+                    const wikiData = await wikiRes.json();
+                    const articles = wikiData.items[0]?.articles || [];
+                    
+                    const wikiStoplist = ["Main_Page", "Special:", "Search", "Wikipedia:", "Deaths_in_"];
+                    
+                    articles.forEach(art => {
+                        const cleanTitle = art.article.replace(/_/g, ' ');
+                        if (!wikiStoplist.some(s => art.article.includes(s)) && regTrendsFilter.test(cleanTitle.toLowerCase())) {
+                            allTrends.push({
+                                title: cleanTitle,
+                                link: `https://en.wikipedia.org/wiki/${art.article}`
+                            });
+                        }
+                    });
+                }
+            } catch(e) {
+                console.warn("Wikimedia trends skipped.");
             }
 
             const uniqueTrends = [];
-            const seen = new Set();
+            const seenTitles = [];
+            
             for (const t of allTrends) {
-                if (!seen.has(t.title)) {
+                if (!isDuplicateTopic(t.title, seenTitles)) {
                     uniqueTrends.push(t);
-                    seen.add(t.title);
+                    seenTitles.push(t.title);
                 }
             }
 
@@ -661,61 +725,52 @@
             }
         }
 
-        // Fetch 3: MISSIONS (7 Topics, Deduplicated)
+        // Fetch 3: MISSIONS (7 Topics)
         async function loadMissionStories() {
             let allMissionStories = [];
             const lookbackWindow = Date.now() - (120 * 60 * 60 * 1000);
 
             const fetchPromises = missionSources.map(async (source) => {
-                try {
-                    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(source.url)}`;
-                    const response = await fetchWithTimeout(apiUrl);
-                    const data = await response.json();
+                const items = await fetchRSS(source.name, source.url);
+                items.forEach(item => {
+                    const title = item.title || "";
+                    const link = (item.link || "").toLowerCase();
+                    const description = item.description || "";
                     
-                    if (data.status === 'ok' && data.items) {
-                        data.items.forEach(item => {
-                            const title = item.title || "";
-                            const link = (item.link || "").toLowerCase();
-                            const description = item.description || item.content || "";
-                            
-                            if (blockedUrlPaths.some(path => link.includes(path))) return;
+                    if (blockedUrlPaths.some(path => link.includes(path))) return;
 
-                            const parsedDate = new Date(item.pubDate || "").getTime();
-                            const articleTimestamp = isNaN(parsedDate) ? Date.now() : parsedDate;
-                            
-                            if (articleTimestamp >= lookbackWindow) {
-                                const searchText = (title + " " + description).toLowerCase();
-                                
-                                if (regBlocklist.test(searchText) || regBlogSpam.test(searchText) || regSoftNewsBlocklist.test(searchText)) return;
+                    const parsedDate = new Date(item.pubDate || "").getTime();
+                    const articleTimestamp = isNaN(parsedDate) ? Date.now() : parsedDate;
+                    
+                    if (articleTimestamp >= lookbackWindow) {
+                        const searchText = (title + " " + description).toLowerCase();
+                        
+                        if (regBlocklist.test(searchText) || regBlogSpam.test(searchText) || regSoftNewsBlocklist.test(searchText)) return;
 
-                                let targetMission = null;
-                                if (regexes.fairer.test(searchText)) targetMission = "fairer";
-                                else if (regexes.healthy.test(searchText)) targetMission = "healthy";
-                                else if (regexes.sustainable.test(searchText)) targetMission = "sustainable";
-                                else if (regexes.economy.test(searchText)) targetMission = "economy";
-                                else if (regexes.ai.test(searchText)) targetMission = "ai";
-                                else if (regexes.devolution.test(searchText)) targetMission = "devolution";
-                                else if (regexes.housing.test(searchText)) targetMission = "housing";
-                                
-                                if (targetMission) {
-                                    if (!allMissionStories.some(s => s.link === item.link)) {
-                                        const isBlog = source.name.includes("Substack") || source.name.includes("Medium");
-                                        
-                                        allMissionStories.push({
-                                            title: item.title, link: item.link, source: source.name, 
-                                            targetMission, timestamp: articleTimestamp, isBlog: isBlog
-                                        });
-                                    }
-                                }
+                        let targetMission = null;
+                        if (regexes.fairer.test(searchText)) targetMission = "fairer";
+                        else if (regexes.healthy.test(searchText)) targetMission = "healthy";
+                        else if (regexes.sustainable.test(searchText)) targetMission = "sustainable";
+                        else if (regexes.economy.test(searchText)) targetMission = "economy";
+                        else if (regexes.ai.test(searchText)) targetMission = "ai";
+                        else if (regexes.devolution.test(searchText)) targetMission = "devolution";
+                        else if (regexes.housing.test(searchText)) targetMission = "housing";
+                        
+                        if (targetMission) {
+                            if (!allMissionStories.some(s => s.link === item.link)) {
+                                const isBlog = source.name.includes("Substack") || source.name.includes("Medium");
+                                allMissionStories.push({
+                                    title: item.title, link: item.link, source: source.name, 
+                                    targetMission, timestamp: articleTimestamp, isBlog: isBlog
+                                });
                             }
-                        });
+                        }
                     }
-                } catch (error) { console.warn(`Skipping ${source.name} in Missions.`); }
+                });
             });
 
             await Promise.all(fetchPromises);
             
-            // Priority: Hard News first, Blogs second. Then newest first.
             allMissionStories.sort((a, b) => {
                 if (a.isBlog !== b.isBlog) return a.isBlog ? 1 : -1;
                 return b.timestamp - a.timestamp;
@@ -740,60 +795,11 @@
             const container = document.getElementById("feed-nesta");
             const nestaUrl = "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml"; 
 
-            const proxyList = [
-                `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(nestaUrl)}`,
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(nestaUrl)}&t=${Date.now()}`,
-                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(nestaUrl)}`
-            ];
-
-            let items = [];
-
-            for (let i = 0; i < proxyList.length; i++) {
-                try {
-                    const response = await fetchWithTimeout(proxyList[i], 8000);
-                    if (!response.ok) continue;
-
-                    if (proxyList[i].includes('api.json')) {
-                        const data = await response.json();
-                        if (data.status === 'ok' && data.items && data.items.length > 0) {
-                            items = data.items.slice(0, 5).map(item => ({
-                                title: item.title,
-                                link: item.link,
-                                pubDate: item.pubDate || Date.now()
-                            }));
-                            break; 
-                        }
-                    } else {
-                        const xmlText = await response.text();
-                        if (xmlText.includes("<rss") || xmlText.includes("<feed")) {
-                            const parser = new DOMParser();
-                            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-                            const xmlItems = Array.from(xmlDoc.querySelectorAll("item, entry")).slice(0, 5);
-                            
-                            if (xmlItems.length > 0) {
-                                items = xmlItems.map(item => {
-                                    const titleNode = item.querySelector("title");
-                                    const linkNode = item.querySelector("link");
-                                    const pubDateNode = item.querySelector("pubDate, published, updated");
-                                    let linkUrl = "";
-                                    if (linkNode) linkUrl = linkNode.textContent || linkNode.getAttribute("href") || "";
-
-                                    return {
-                                        title: titleNode ? titleNode.textContent : "Nesta Blog",
-                                        link: linkUrl,
-                                        pubDate: pubDateNode ? pubDateNode.textContent : Date.now()
-                                    };
-                                });
-                                break;
-                            }
-                        }
-                    }
-                } catch (e) { console.warn(`Nesta Blog Proxy ${i + 1} failed, trying next...`); }
-            }
+            const items = await fetchRSS("Nesta Blogs", nestaUrl);
 
             if (items.length > 0) {
                 container.innerHTML = "";
-                items.forEach(story => {
+                items.slice(0, 5).forEach(story => {
                     const div = document.createElement("div");
                     div.className = "news-card";
                     
