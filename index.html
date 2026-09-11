@@ -432,54 +432,78 @@
         }
 
         async function fetchRSS(sourceName, url) {
-            let items = [];
             const secureUrl = url.replace(/^http:\/\//i, 'https://');
-            
-            const proxyList = [
-                { type: 'allorigins', url: `https://api.allorigins.win/get?url=${encodeURIComponent(secureUrl)}` },
-                { type: 'rss2json', url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(secureUrl)}` },
-                { type: 'raw', url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(secureUrl)}` }
-            ];
 
-            for (let i = 0; i < proxyList.length; i++) {
-                try {
-                    const p = proxyList[i];
-                    const response = await fetchWithTimeout(p.url, 6000);
-                    if (!response.ok) continue;
+            // Primary route: RSS2JSON. It is browser-friendly and avoids direct RSS CORS issues.
+            try {
+                const rss2jsonUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(secureUrl)}`;
+                const response = await fetchWithTimeout(rss2jsonUrl, 8000);
 
-                    if (p.type === 'allorigins') {
-                        const data = await response.json();
-                        if (data && data.contents && data.contents.length > 30) {
-                            const parsed = parseRawXml(data.contents);
-                            if (parsed && parsed.length > 0) {
-                                items = parsed;
-                                break;
-                            }
-                        }
-                    } else if (p.type === 'rss2json') {
-                        const data = await response.json();
-                        if (data && data.status === 'ok' && data.items && data.items.length > 0) {
-                            items = data.items.map(item => ({
-                                title: item.title || "",
-                                link: item.link || "",
-                                description: item.description || item.content || "",
-                                pubDate: item.pubDate || Date.now()
-                            }));
-                            break;
-                        }
-                    } else if (p.type === 'raw') {
-                        const xmlText = await response.text();
-                        if (xmlText && xmlText.length > 30) {
-                            const parsed = parseRawXml(xmlText);
-                            if (parsed && parsed.length > 0) {
-                                items = parsed;
-                                break;
-                            }
-                        }
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.status === 'ok' && Array.isArray(data.items) && data.items.length > 0) {
+                        return data.items.map(item => ({
+                            title: item.title || "",
+                            link: item.link || "",
+                            description: item.description || item.content || "",
+                            pubDate: item.pubDate || Date.now()
+                        }));
                     }
-                } catch (e) { } 
+                } else {
+                    console.warn(`RSS2JSON HTTP ${response.status} for ${sourceName}`);
+                }
+            } catch (error) {
+                console.warn(`RSS2JSON failed for ${sourceName}:`, error);
             }
-            return items;
+
+            // Fallback route: AllOrigins raw endpoint, then parse the XML locally.
+            try {
+                const allOriginsUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(secureUrl)}`;
+                const response = await fetchWithTimeout(allOriginsUrl, 8000);
+
+                if (response.ok) {
+                    const xmlText = await response.text();
+                    if (xmlText && xmlText.length > 30) {
+                        const parsed = parseRawXml(xmlText);
+                        if (parsed.length > 0) return parsed;
+                    }
+                } else {
+                    console.warn(`AllOrigins HTTP ${response.status} for ${sourceName}`);
+                }
+            } catch (error) {
+                console.warn(`AllOrigins failed for ${sourceName}:`, error);
+            }
+
+            console.warn(`No RSS data returned for ${sourceName}: ${secureUrl}`);
+            return [];
+        }
+
+        // Run asynchronous feed jobs with a small concurrency limit so mobile browsers
+        // and public RSS proxy services are not hit with dozens of requests at once.
+        async function mapWithConcurrency(items, limit, worker) {
+            const results = new Array(items.length);
+            let nextIndex = 0;
+
+            async function runWorker() {
+                while (true) {
+                    const currentIndex = nextIndex++;
+                    if (currentIndex >= items.length) return;
+                    try {
+                        results[currentIndex] = await worker(items[currentIndex], currentIndex);
+                    } catch (error) {
+                        console.warn('Feed worker failed:', error);
+                        results[currentIndex] = null;
+                    }
+                }
+            }
+
+            const workers = Array.from(
+                { length: Math.min(limit, items.length) },
+                () => runWorker()
+            );
+
+            await Promise.all(workers);
+            return results;
         }
 
         // --- 3. SOURCES & CONFIGURATION ---
@@ -670,9 +694,10 @@
         // Fetch 1: TOP UK STORIES
         async function loadTopStories() {
             const container = document.getElementById("feed-top");
+            container.innerHTML = `<div class="empty-state">Loading latest UK stories…</div>`;
             let stories = [];
             
-            const fetchPromises = topNewsSources.map(async (source) => {
+            await mapWithConcurrency(topNewsSources, 3, async (source) => {
                 const items = await fetchRSS(source.name, source.url);
                 items.forEach(item => {
                     const title = item.title || "";
@@ -690,7 +715,6 @@
                 });
             });
 
-            await Promise.all(fetchPromises);
             stories.sort((a, b) => b.timestamp - a.timestamp);
             
             const top5 = [];
@@ -811,7 +835,7 @@
             let allMissionStories = [];
             const lookbackWindow = Date.now() - (120 * 60 * 60 * 1000);
 
-            const fetchPromises = missionSources.map(async (source) => {
+            await mapWithConcurrency(missionSources, 5, async (source) => {
                 const items = await fetchRSS(source.name, source.url);
                 items.forEach(item => {
                     const title = item.title || "";
@@ -864,8 +888,6 @@
                     }
                 });
             });
-
-            await Promise.all(fetchPromises);
             
             allMissionStories.sort((a, b) => {
                 if (a.isBlog !== b.isBlog) return a.isBlog ? 1 : -1;
@@ -889,6 +911,8 @@
         // Fetch 4: LATEST NESTA BLOGS (Multi-Source Robust Fallback)
         async function loadNestaBlogs() {
             const container = document.getElementById("feed-nesta");
+            container.innerHTML = `<div class="empty-state">Loading latest Nesta blogs…</div>`;
+
             const nestaBlogSources = [
                 "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml",
                 "https://news.google.com/rss/search?q=site:nesta.org.uk/blog&hl=en-GB&gl=GB&ceid=GB:en",
@@ -896,11 +920,12 @@
                 "https://openrss.org/feed/www.nesta.org.uk"
             ];
 
-            let items = [];
-            for (const url of nestaBlogSources) {
-                items = await fetchRSS("Nesta Blogs", url);
-                if (items && items.length > 0) break;
-            }
+            // Try alternatives in parallel, but only two at a time to avoid a request burst.
+            const sourceResults = await mapWithConcurrency(nestaBlogSources, 2, async (url) => {
+                return await fetchRSS("Nesta Blogs", url);
+            });
+
+            const items = sourceResults.find(result => Array.isArray(result) && result.length > 0) || [];
 
             if (items && items.length > 0) {
                 container.innerHTML = "";
@@ -991,11 +1016,15 @@
 
         // --- 7. INDEPENDENT BOOTSTRAPPING ---
         async function bootDashboard() {
-            loadTopStories();
-            loadTrends();
-            loadNestaBlogs(); 
-            
-            await loadMissionStories(); 
+            // Give the two most visible panels priority before the large mission-feed job.
+            await Promise.all([
+                loadTopStories(),
+                loadNestaBlogs()
+            ]);
+
+            // Trends next, then the larger mission aggregation.
+            await loadTrends();
+            await loadMissionStories();
             
             if (rotationTimer) clearInterval(rotationTimer);
             renderRotatedMission();
