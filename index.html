@@ -918,47 +918,77 @@
         }
 
         async function loadNestaBlogs() {
-            // Always give the user useful content immediately.
+            // Always render the known-current Nesta list immediately.
             const container = document.getElementById("feed-nesta");
             if (!container.querySelector('.news-card')) {
                 renderNestaStories(nestaSeedStories);
             }
 
-            // One quick automated refresh attempt. Failure is harmless: keep seed/current content.
+            // HTML-only compromise: make one short recent-only Google News refresh.
+            // Do NOT use the old rss.app feed here: it can return stale archived items.
             const liveSources = [
-                "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml",
-                "https://news.google.com/rss/search?q=site%3Anesta.org.uk%2Fblog%2F&hl=en-GB&gl=GB&ceid=GB%3Aen"
+                "https://news.google.com/rss/search?q=site%3Anesta.org.uk%2Fblog%2F+when%3A90d&hl=en-GB&gl=GB&ceid=GB%3Aen",
+                "https://news.google.com/rss/search?q=site%3Anesta.org.uk%2Fblog%2F+Nesta+when%3A90d&hl=en-GB&gl=GB&ceid=GB%3Aen"
             ];
 
             try {
                 const results = await Promise.allSettled(
                     liveSources.map(url => fetchRSS("Nesta Blogs", url))
                 );
-                const combined = results
+                const fetched = results
                     .filter(r => r.status === 'fulfilled' && Array.isArray(r.value))
                     .flatMap(r => r.value);
 
-                const seen = new Set();
-                const live = combined
+                const now = Date.now();
+                const maxAgeMs = 180 * 24 * 60 * 60 * 1000; // reject stale/archived results
+
+                const recentLive = fetched
                     .filter(story => story && story.title && story.link)
+                    .map(story => {
+                        const timestamp = new Date(story.pubDate || '').getTime();
+                        return {
+                            ...story,
+                            timestamp,
+                            title: String(story.title)
+                                .replace(/<[^>]*>?/gm, '')
+                                .replace(/\s+-\s+Nesta\s*$/i, '')
+                                .trim()
+                        };
+                    })
+                    .filter(story =>
+                        story.title &&
+                        Number.isFinite(story.timestamp) &&
+                        story.timestamp <= now + (24 * 60 * 60 * 1000) &&
+                        (now - story.timestamp) <= maxAgeMs
+                    );
+
+                // Merge with the built-in recent list instead of replacing it.
+                // This prevents a stale live feed from pushing 2023 posts into the panel.
+                const merged = [...recentLive, ...nestaSeedStories]
                     .map(story => ({
                         ...story,
-                        title: String(story.title)
-                            .replace(/<[^>]*>?/gm, '')
-                            .replace(/\s+-\s+Nesta\s*$/i, '')
-                            .trim()
+                        timestamp: Number.isFinite(story.timestamp)
+                            ? story.timestamp
+                            : new Date(story.pubDate || '').getTime()
                     }))
+                    .filter(story => story.title && story.link && Number.isFinite(story.timestamp));
+
+                const seenTitles = new Set();
+                const clean = merged
+                    .sort((a, b) => b.timestamp - a.timestamp)
                     .filter(story => {
-                        const key = story.title.toLowerCase();
-                        if (seen.has(key)) return false;
-                        seen.add(key);
+                        const key = String(story.title)
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]+/g, ' ')
+                            .trim();
+                        if (!key || seenTitles.has(key)) return false;
+                        seenTitles.add(key);
                         return true;
                     })
-                    .sort((a, b) => new Date(b.pubDate || 0) - new Date(a.pubDate || 0))
                     .slice(0, 5);
 
-                if (live.length >= 3) {
-                    renderNestaStories(live);
+                if (clean.length > 0) {
+                    renderNestaStories(clean);
                 }
             } catch (error) {
                 console.warn("Nesta refresh skipped; keeping built-in recent stories.", error);
