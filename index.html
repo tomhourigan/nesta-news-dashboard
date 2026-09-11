@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nesta | News Dashboard</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+
         :root {
             /* Core Colors */
             --nesta-primary-blue: #0000ff;
@@ -27,7 +29,7 @@
         body {
             margin: 0;
             padding: 0;
-            font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif;
+            font-family: 'Century Gothic', CenturyGothic, 'Avenir Next', Avenir, 'Montserrat', sans-serif;
             background-color: var(--bg-light);
             color: var(--text-dark);
             overflow: hidden; 
@@ -147,7 +149,6 @@
             color: var(--trending);
         }
 
-        /* Updated: Latest Nesta Blogs text color now matches panel accent */
         #wrapper-nesta .mission-header {
             color: var(--nesta-primary-blue);
         }
@@ -388,10 +389,11 @@
             let items = [];
             const secureUrl = url.replace(/^http:\/\//i, 'https://');
             
+            // Re-ordered to prioritize CORS-friendly endpoints for mobile Safari
             const proxyList = [
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(secureUrl)}`,
                 `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(secureUrl)}`,
                 `https://corsproxy.io/?${encodeURIComponent(secureUrl)}`,
-                `https://api.allorigins.win/get?url=${encodeURIComponent(secureUrl)}&t=${Date.now()}`,
                 `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(secureUrl)}`
             ];
 
@@ -405,13 +407,6 @@
                         if (data.status === 'ok' && data.items && data.items.length > 0) {
                             items = data.items;
                             break;
-                        }
-                    } else if (proxyList[i].includes('allorigins.win')) {
-                        const data = await response.json();
-                        const xmlText = data.contents || "";
-                        if (xmlText.includes("<rss") || xmlText.includes("<feed") || xmlText.includes("<xml")) {
-                            items = parseRawXml(xmlText);
-                            if (items.length > 0) break;
                         }
                     } else {
                         const xmlText = await response.text();
@@ -504,7 +499,7 @@
             { name: "Google News UK", url: "https://news.google.com/rss/search?q=(UK+OR+Britain)+AND+(housing+OR+%22house+building%22+OR+%22affordable+housing%22+OR+mortgages)&hl=en-GB&gl=GB&ceid=GB:en" }
         ];
 
-        // 7 THEMATIC DICTIONARIES (Devolution includes standalone council/government terms)
+        // 7 THEMATIC DICTIONARIES
         const keywords = {
             fairer: [
                 "early years", "early childhood", "childcare", "nursery", "nurseries", "pre-school", "preschool", 
@@ -561,10 +556,11 @@
             "labour", "conservative", "tory", "tories", "lib dem", "reform uk", "budget", "cabinet", "election"
         ];
 
-        // AGGRESSIVE BLOCKLISTS
+        // AGGRESSIVE BLOCKLISTS (Expanded to filter Swiss Alps crash and foreign accidents)
         const blocklist = [
             "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", 
             "german", "germany", "scholz", "berlin", "french", "france", "paris", "macron", "american", "america", "european union", "eu politics", "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "pentagon",
+            "swiss", "switzerland", "alps", "coach crash", "bus crash", "plane crash", "avalanche",
             "midterm", "midterms", "congress", "senate", "republican", "republicans", "democrat", "democrats", "gop", "house of representatives", "us election", "american election",
             "general election", "independence referendum", "referendum", "tax hikes", "tax hike", "polling", "opinion poll", "campaign trail",
             "teenager", "teenagers", "teens", "university", "universities", "gcse", "gcses", "a-level", "a-levels", "higher education", "student", "students", "campus"
@@ -635,7 +631,7 @@
 
         // --- 5. FETCHERS ---
 
-        // Fetch 1: TOP UK STORIES
+        // Fetch 1: TOP UK STORIES (Now includes regBlocklist check)
         async function loadTopStories() {
             const container = document.getElementById("feed-top");
             let stories = [];
@@ -647,7 +643,8 @@
                     const description = item.description || "";
                     const searchText = (title + " " + description).toLowerCase();
 
-                    if (regSummaryBlocklist.test(searchText) || regSoftNewsBlocklist.test(searchText) || firstPersonRegex.test(title)) return;
+                    // Fixed: regBlocklist check added to stop non-UK crashes/events in Top Stories
+                    if (regBlocklist.test(searchText) || regSummaryBlocklist.test(searchText) || regSoftNewsBlocklist.test(searchText) || firstPersonRegex.test(title)) return;
 
                     const parsedDate = new Date(item.pubDate || "").getTime();
                     const articleTimestamp = isNaN(parsedDate) ? Date.now() : parsedDate;
@@ -795,7 +792,6 @@
                         const lowerTitle = title.toLowerCase();
                         const lowerDesc = description.toLowerCase();
                         
-                        // Check blocklist against headline FIRST to prevent valid policy articles getting dropped by background description words
                         if (regBlocklist.test(lowerTitle) || regBlogSpam.test(lowerTitle) || regSoftNewsBlocklist.test(lowerTitle)) return;
 
                         let targetMission = null;
@@ -808,7 +804,6 @@
                         else if (regexes.devolution.test(lowerTitle)) targetMission = "devolution";
                         else if (regexes.housing.test(lowerTitle)) targetMission = "housing";
                         
-                        // Fallback check on description only if headline didn't trigger a match
                         if (!targetMission) {
                             const fullText = lowerTitle + " " + lowerDesc;
                             if (!regBlocklist.test(fullText) && !regBlogSpam.test(fullText) && !regSoftNewsBlocklist.test(fullText)) {
@@ -856,14 +851,20 @@
             });
         }
 
-        // Fetch 4: LATEST NESTA BLOGS 
+        // Fetch 4: LATEST NESTA BLOGS (With Google News Search Fallback for Mobile Devices)
         async function loadNestaBlogs() {
             const container = document.getElementById("feed-nesta");
             const nestaUrl = "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml"; 
 
-            const items = await fetchRSS("Nesta Blogs", nestaUrl);
+            let items = await fetchRSS("Nesta Blogs", nestaUrl);
 
-            if (items.length > 0) {
+            // Mobile fallback if rss.app proxy fails on non-desktop networks
+            if (!items || items.length === 0) {
+                const fallbackUrl = "https://news.google.com/rss/search?q=site:nesta.org.uk&hl=en-GB&gl=GB&ceid=GB:en";
+                items = await fetchRSS("Nesta Blogs", fallbackUrl);
+            }
+
+            if (items && items.length > 0) {
                 container.innerHTML = "";
                 items.slice(0, 5).forEach(story => {
                     const div = document.createElement("div");
