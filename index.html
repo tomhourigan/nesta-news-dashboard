@@ -863,9 +863,19 @@
         }
 
         // Fetch 4: LATEST NESTA BLOGS
-        // SIMPLE/ROBUST MODE: show a verified recent Nesta snapshot immediately,
-        // then make one short background attempt to replace it with newer items.
+        // HTML-ONLY MODE: show a live-verified recent Nesta baseline immediately,
+        // then make one short background check for anything genuinely newer.
         const nestaSeedStories = [
+            {
+                title: "Obesity, inequality and the weekly shop: who stands to benefit from the healthy food standard?",
+                link: "https://www.nesta.org.uk/blog/obesity-inequality-and-the-weekly-shop/",
+                pubDate: "2026-09-09"
+            },
+            {
+                title: "What six numbers can tell us about the future of GLP-1 medications",
+                link: "https://www.nesta.org.uk/blog/what-six-numbers-can-tell-us-about-the-future-of-glp-1-medications/",
+                pubDate: "2026-09-08"
+            },
             {
                 title: "How local authorities can use ASQ-3 data in delivering their Best Start in Life plans",
                 link: "https://www.nesta.org.uk/blog/how-local-authorities-can-use-asq-3-data-in-delivering-their-best-start-in-life-plans/",
@@ -880,16 +890,6 @@
                 title: "The energy edit: getting over the 2030 energy bill bump",
                 link: "https://www.nesta.org.uk/blog/the-energy-edit-5/",
                 pubDate: "2026-08-04"
-            },
-            {
-                title: "Why we should build more houses in the Oxford-Cambridge arc",
-                link: "https://www.nesta.org.uk/blog/why-we-should-build-more-houses-in-the-oxford-cambridge-arc/",
-                pubDate: "2026-07-30"
-            },
-            {
-                title: "What evidence do we need to give children the best start in life?",
-                link: "https://www.nesta.org.uk/blog/what-evidence-do-we-need-to-give-children-the-best-start-in-life/",
-                pubDate: "2026-07-28"
             }
         ];
 
@@ -900,8 +900,9 @@
             stories.slice(0, 5).forEach(story => {
                 const div = document.createElement("div");
                 div.className = "news-card";
-                const d = new Date(story.pubDate || story.timestamp || Date.now());
-                const cleanDateStr = isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", {
+
+                const storyDate = new Date(story.pubDate || Date.now());
+                const cleanDateStr = storyDate.toLocaleDateString("en-GB", {
                     day:'numeric', month:'short', year:'numeric'
                 }).replace(/,/g, '');
                 const cleanTitle = String(story.title || "").replace(/<[^>]*>?/gm, '').trim();
@@ -918,80 +919,66 @@
         }
 
         async function loadNestaBlogs() {
-            // Always render the known-current Nesta list immediately.
-            const container = document.getElementById("feed-nesta");
-            if (!container.querySelector('.news-card')) {
-                renderNestaStories(nestaSeedStories);
-            }
+            // Render immediately so this panel is fast and identical on every device.
+            renderNestaStories(nestaSeedStories);
 
-            // HTML-only compromise: make one short recent-only Google News refresh.
-            // Do NOT use the old rss.app feed here: it can return stale archived items.
-            const liveSources = [
-                "https://news.google.com/rss/search?q=site%3Anesta.org.uk%2Fblog%2F+when%3A90d&hl=en-GB&gl=GB&ceid=GB%3Aen",
-                "https://news.google.com/rss/search?q=site%3Anesta.org.uk%2Fblog%2F+Nesta+when%3A90d&hl=en-GB&gl=GB&ceid=GB%3Aen"
-            ];
+            // Store a successful genuinely-newer item locally so subsequent opens on the
+            // same device can show it immediately without waiting for the network.
+            try {
+                const cached = JSON.parse(localStorage.getItem('nestaNewerBlogsV7') || '[]');
+                if (Array.isArray(cached) && cached.length) {
+                    const mergedCached = [...cached, ...nestaSeedStories]
+                        .sort((a,b) => new Date(b.pubDate || 0) - new Date(a.pubDate || 0));
+                    renderNestaStories(mergedCached);
+                }
+            } catch (_) {}
+
+            const newestVerified = new Date('2026-09-09T00:00:00Z').getTime();
+            const liveUrl = "https://news.google.com/rss/search?q=site%3Anesta.org.uk%2Fblog%2F+nesta&hl=en-GB&gl=GB&ceid=GB%3Aen";
 
             try {
-                const results = await Promise.allSettled(
-                    liveSources.map(url => fetchRSS("Nesta Blogs", url))
-                );
-                const fetched = results
-                    .filter(r => r.status === 'fulfilled' && Array.isArray(r.value))
-                    .flatMap(r => r.value);
-
-                const now = Date.now();
-                const maxAgeMs = 180 * 24 * 60 * 60 * 1000; // reject stale/archived results
-
-                const recentLive = fetched
-                    .filter(story => story && story.title && story.link)
+                const liveItems = await fetchRSS("Nesta Blogs", liveUrl);
+                const newer = liveItems
+                    .filter(story => story && story.title && story.link && story.pubDate)
                     .map(story => {
-                        const timestamp = new Date(story.pubDate || '').getTime();
+                        const title = String(story.title)
+                            .replace(/<[^>]*>?/gm, '')
+                            .replace(/\s+-\s+Nesta(?:\s*\|.*)?$/i, '')
+                            .trim();
                         return {
                             ...story,
-                            timestamp,
-                            title: String(story.title)
-                                .replace(/<[^>]*>?/gm, '')
-                                .replace(/\s+-\s+Nesta\s*$/i, '')
-                                .trim()
+                            title,
+                            timestamp: new Date(story.pubDate).getTime()
                         };
                     })
-                    .filter(story =>
-                        story.title &&
-                        Number.isFinite(story.timestamp) &&
-                        story.timestamp <= now + (24 * 60 * 60 * 1000) &&
-                        (now - story.timestamp) <= maxAgeMs
-                    );
+                    .filter(story => Number.isFinite(story.timestamp) && story.timestamp > newestVerified)
+                    // Google News sometimes surfaces old Nesta pages with misleading dates.
+                    // Only accept titles explicitly attributed to Nesta in the original item.
+                    .filter((story, i) => {
+                        const originalTitle = String(liveItems[i]?.title || '');
+                        return /Nesta/i.test(originalTitle);
+                    });
 
-                // Merge with the built-in recent list instead of replacing it.
-                // This prevents a stale live feed from pushing 2023 posts into the panel.
-                const merged = [...recentLive, ...nestaSeedStories]
-                    .map(story => ({
-                        ...story,
-                        timestamp: Number.isFinite(story.timestamp)
-                            ? story.timestamp
-                            : new Date(story.pubDate || '').getTime()
-                    }))
-                    .filter(story => story.title && story.link && Number.isFinite(story.timestamp));
+                if (!newer.length) return;
 
-                const seenTitles = new Set();
-                const clean = merged
-                    .sort((a, b) => b.timestamp - a.timestamp)
+                const seen = new Set();
+                const merged = [...newer, ...nestaSeedStories]
                     .filter(story => {
-                        const key = String(story.title)
-                            .toLowerCase()
-                            .replace(/[^a-z0-9]+/g, ' ')
-                            .trim();
-                        if (!key || seenTitles.has(key)) return false;
-                        seenTitles.add(key);
+                        const key = String(story.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
+                        if (!key || seen.has(key)) return false;
+                        seen.add(key);
                         return true;
                     })
+                    .sort((a, b) => new Date(b.pubDate || b.timestamp || 0) - new Date(a.pubDate || a.timestamp || 0))
                     .slice(0, 5);
 
-                if (clean.length > 0) {
-                    renderNestaStories(clean);
-                }
+                // Cache only genuinely-newer items, not the Google News archive selection.
+                const cacheItems = merged.filter(s => new Date(s.pubDate || 0).getTime() > newestVerified);
+                try { localStorage.setItem('nestaNewerBlogsV7', JSON.stringify(cacheItems)); } catch (_) {}
+
+                renderNestaStories(merged);
             } catch (error) {
-                console.warn("Nesta refresh skipped; keeping built-in recent stories.", error);
+                console.warn("Nesta background check skipped; keeping live-verified list.", error);
             }
         }
 
