@@ -21,7 +21,7 @@
             --ai: #4B38D3;            
             --devolution: #FFB800;    
             --housing: #00A388;
-            --trending: #9D2BFE; /* Electric Purple */
+            --trending: #9D2BFE; 
         }
 
         body {
@@ -88,7 +88,6 @@
             margin: 0;
         }
 
-        /* DYNAMIC HEIGHT-LOCKED LAYOUT */
         main {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -130,7 +129,6 @@
             flex-shrink: 0; 
         }
 
-        /* Headers with Specific Accents */
         #wrapper-top { border-top: 6px solid var(--nesta-dark-blue); }
         #wrapper-trends { border-top: 6px solid var(--trending); }
         #wrapper-nesta { border-top: 6px solid var(--nesta-primary-blue); } 
@@ -190,7 +188,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Standard News Card */
         .news-card {
             border-bottom: 1px solid #EAEAEA;
             padding: 1.25rem 0;
@@ -221,7 +218,6 @@
         .news-card a { text-decoration: none; color: var(--text-dark); transition: color 0.2s; }
         .news-card a:hover { color: var(--nesta-primary-blue); }
 
-        /* Specific Shrunken Styles for Top UK Stories */
         #feed-top .news-card { padding: 0.8rem 0; }
         #feed-top .meta-info { display: none; }
         #feed-top .news-card h4 { font-size: 0.95rem; line-height: 1.35; }
@@ -234,7 +230,6 @@
             display: inline-block;
         }
 
-        /* Styles for Trends Box */
         #feed-trends { padding-top: 0.5rem; padding-bottom: 0.5rem; }
         .trend-item {
             display: flex;
@@ -271,7 +266,6 @@
             line-height: 1.5;
         }
         
-        /* Mobile Layout */
         @media (max-width: 1200px) { 
             body { overflow: auto; }
             main { grid-template-columns: repeat(2, 1fr); height: auto; min-height: 100vh; }
@@ -451,7 +445,6 @@
             { name: "Civil Service World", url: "https://news.google.com/rss/search?q=site:civilserviceworld.com&hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "HSJ", url: "https://news.google.com/rss/search?q=site:hsj.co.uk&hl=en-GB&gl=GB&ceid=GB:en" },
             
-            /* Newly Added UK News & Policy Feeds */
             { name: "The Times", url: "https://openrss.org/feed/www.thetimes.com" },
             { name: "iNews", url: "https://openrss.org/feed/inews.co.uk" },
             { name: "Financial Times", url: "https://www.ft.com/news-feed?format=rss" },
@@ -474,30 +467,30 @@
             { name: "Google News UK", url: "https://news.google.com/rss/search?q=(UK+OR+Britain)+AND+(housing+OR+%22house+building%22+OR+%22affordable+housing%22+OR+mortgages)&hl=en-GB&gl=GB&ceid=GB:en" }
         ];
 
-        // 7 THEMATIC DICTIONARIES
+        // 7 THEMATIC DICTIONARIES (Tightened to exclude generic political horse-race news)
         const keywords = {
             fairer: [
                 "early years", "early childhood", "childcare", "nursery", "nurseries", "pre-school", "preschool", 
                 "childminder", "childminders", "primary school", "primary schools", "primary education", 
-                "pupil", "pupils", "education policy", "child poverty", "maternity", "paternity", 
+                "education policy", "child poverty", "maternity", "paternity", "schooling", "state school", "state schools",
                 "child benefit", "sure start", "family hubs", "parenting interventions", "family support",
                 "early education", "early development", "key stage 1", "free school meals", 
-                "ofsted", "childhood", "growing up", "kids", "education system", "school funding", "schools"
+                "ofsted", "school funding", "nursery funding"
             ],
             healthy: [
                 "obesity", "glp-1", "glp1", "wegovy", "ozempic", "mounjaro", "weight loss", "weight-loss", 
                 "sugar tax", "junk food", "calorie", "calories", "ultra-processed", "upf", "upfs", 
                 "healthy eating", "food advertising", "hfss", "public health strategy", "public health", 
                 "food industry", "supermarket food", "nutrition", "food environment", "food reformulation", 
-                "portion sizes", "food policy", "health inequality", "preventative health", "weight management", "diet", "diets"
+                "portion sizes", "food policy", "health inequality", "preventative health", "weight management"
             ],
             sustainable: [
                 "heat pump", "heat pumps", "low-carbon heating", "low carbon heating", "household emissions",
                 "boiler upgrade", "home insulation", "retrofit", "net zero", "net-zero", "carbon emissions", 
-                "climate change", "green energy", "clean energy", "renewable", "renewables", "solar power", 
-                "wind farm", "wind farms", "energy bill", "energy bills", "electricity", "power", 
+                "green energy", "clean energy", "renewable", "renewables", "solar power", 
+                "wind farm", "wind farms", "energy bill", "energy bills", 
                 "national grid", "decarbonisation", "fossil fuel", "fossil fuels", "north sea oil", "north sea gas", 
-                "oil and gas", "climate target", "low carbon", "green skills", "energy transition", "environment", "global warming"
+                "oil and gas", "climate target", "low carbon", "green skills", "energy transition"
             ],
             economy: [
                 "uk economy", "gdp", "bank of england", "interest rates", "inflation", "chancellor", "treasury", 
@@ -513,8 +506,7 @@
                 "devolution deal", "devolution deals", "english devolution", "metro mayor", "metro mayors", 
                 "combined authority", "combined authorities", "regional mayor", "regional mayors", "regional government", 
                 "decentralisation", "decentralization", "levelling up", "local leaders", "powers for local leaders", 
-                "devolve power", "devolved powers", "local governance", "local council", "local councils", "local government",
-                "government machinery"
+                "devolve power", "devolved powers", "local governance", "government machinery"
             ],
             housing: [
                 "housing crisis", "affordable housing", "social housing", "house building", "planning permission", 
@@ -530,11 +522,12 @@
             "labour", "conservative", "tory", "tories", "lib dem", "reform uk", "budget", "cabinet", "election"
         ];
 
-        // AGGRESSIVE BLOCKLISTS
+        // AGGRESSIVE BLOCKLISTS (Includes political horse-race / election noise filters)
         const blocklist = [
             "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", 
             "german", "germany", "scholz", "berlin", "french", "france", "paris", "macron", "american", "america", "european union", "eu politics", "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "pentagon",
             "midterm", "midterms", "congress", "senate", "republican", "republicans", "democrat", "democrats", "gop", "house of representatives", "us election", "american election",
+            "general election", "independence referendum", "referendum", "tax hikes", "tax hike", "polling", "opinion poll", "campaign trail",
             "teenager", "teenagers", "teens", "university", "universities", "gcse", "gcses", "a-level", "a-levels", "higher education", "student", "students", "campus"
         ];
         
@@ -660,7 +653,7 @@
             });
         }
 
-        // Fetch 2: TRENDS (Hybrid Real-Time Hot Velocity + Wikipedia Surge Tracker + Strict UK Filtering)
+        // Fetch 2: TRENDS (Hybrid Real-Time Hot Velocity + Wikipedia Surge Tracker)
         async function loadTrends() {
             const container = document.getElementById("feed-trends");
             
@@ -742,7 +735,7 @@
             }
         }
 
-        // Fetch 3: MISSIONS (7 Topics)
+        // Fetch 3: MISSIONS (7 Topics, Headline-Primary Keyword Matching)
         async function loadMissionStories() {
             let allMissionStories = [];
             const lookbackWindow = Date.now() - (120 * 60 * 60 * 1000);
@@ -760,18 +753,34 @@
                     const articleTimestamp = isNaN(parsedDate) ? Date.now() : parsedDate;
                     
                     if (articleTimestamp >= lookbackWindow) {
-                        const searchText = (title + " " + description).toLowerCase();
+                        const lowerTitle = title.toLowerCase();
+                        const lowerDesc = description.toLowerCase();
+                        const fullText = lowerTitle + " " + lowerDesc;
                         
-                        if (regBlocklist.test(searchText) || regBlogSpam.test(searchText) || regSoftNewsBlocklist.test(searchText)) return;
+                        // Strict Blocklist Application
+                        if (regBlocklist.test(fullText) || regBlogSpam.test(fullText) || regSoftNewsBlocklist.test(fullText)) return;
 
                         let targetMission = null;
-                        if (regexes.fairer.test(searchText)) targetMission = "fairer";
-                        else if (regexes.healthy.test(searchText)) targetMission = "healthy";
-                        else if (regexes.sustainable.test(searchText)) targetMission = "sustainable";
-                        else if (regexes.economy.test(searchText)) targetMission = "economy";
-                        else if (regexes.ai.test(searchText)) targetMission = "ai";
-                        else if (regexes.devolution.test(searchText)) targetMission = "devolution";
-                        else if (regexes.housing.test(searchText)) targetMission = "housing";
+                        
+                        // HEADLINE-PRIMARY MATCHING: Check headline first to eliminate noisy teaser false-positives
+                        if (regexes.fairer.test(lowerTitle)) targetMission = "fairer";
+                        else if (regexes.healthy.test(lowerTitle)) targetMission = "healthy";
+                        else if (regexes.sustainable.test(lowerTitle)) targetMission = "sustainable";
+                        else if (regexes.economy.test(lowerTitle)) targetMission = "economy";
+                        else if (regexes.ai.test(lowerTitle)) targetMission = "ai";
+                        else if (regexes.devolution.test(lowerTitle)) targetMission = "devolution";
+                        else if (regexes.housing.test(lowerTitle)) targetMission = "housing";
+                        
+                        // SECONDARY FALLBACK: Check description only if title didn't match and description is highly explicit
+                        if (!targetMission) {
+                            if (regexes.fairer.test(lowerDesc)) targetMission = "fairer";
+                            else if (regexes.healthy.test(lowerDesc)) targetMission = "healthy";
+                            else if (regexes.sustainable.test(lowerDesc)) targetMission = "sustainable";
+                            else if (regexes.economy.test(lowerDesc)) targetMission = "economy";
+                            else if (regexes.ai.test(lowerDesc)) targetMission = "ai";
+                            else if (regexes.devolution.test(lowerDesc)) targetMission = "devolution";
+                            else if (regexes.housing.test(lowerDesc)) targetMission = "housing";
+                        }
                         
                         if (targetMission) {
                             if (!allMissionStories.some(s => s.link === item.link)) {
