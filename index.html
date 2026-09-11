@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nesta | Communications News Dashboard</title>
+    <title>Nesta | News Dashboard</title>
     <style>
         :root {
             /* Core Colors */
@@ -17,10 +17,10 @@
             --fairer-start: #FF5A36;     
             --healthy-life: #00C8FF;     
             --sustainable: #00E59B;      
-            --economy: #D942A6;       /* Magenta */
-            --ai: #4B38D3;            /* Indigo */
-            --devolution: #FFB800;    /* Vibrant Yellow */
-            --housing: #00A388;       /* Teal */
+            --economy: #D942A6;       
+            --ai: #4B38D3;            
+            --devolution: #FFB800;    
+            --housing: #00A388;       
         }
 
         body {
@@ -29,7 +29,6 @@
             font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif;
             background-color: var(--bg-light);
             color: var(--text-dark);
-            /* Prevents the entire page from scrolling, keeping it app-like */
             overflow: hidden; 
         }
 
@@ -42,7 +41,7 @@
             padding: 1.5rem 3rem;
             border-bottom: 4px solid var(--nesta-primary-blue);
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            height: 60px; /* Fixed height for header */
+            height: 60px; 
             box-sizing: border-box;
         }
 
@@ -67,21 +66,26 @@
             padding-left: 1.5rem;
         }
 
+        /* UPDATED: Side-by-side Date & Time */
         .time-area {
-            text-align: right;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            justify-content: flex-end;
         }
 
         #time {
-            font-size: 1.6rem;
+            font-size: 1.5rem;
             font-weight: bold;
-            margin-bottom: 2px;
             color: var(--nesta-primary-blue);
+            margin: 0;
         }
 
         #date {
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             color: var(--text-gray);
             font-weight: bold;
+            margin: 0;
         }
 
         /* DYNAMIC HEIGHT-LOCKED LAYOUT */
@@ -90,7 +94,6 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 2rem;
             padding: 1.5rem 3rem;
-            /* Fills viewport height minus the header space */
             height: calc(100vh - 60px); 
             box-sizing: border-box;
         }
@@ -99,10 +102,9 @@
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
-            min-height: 0; /* Crucial for allowing flex children to scroll */
+            min-height: 0; 
         }
 
-        /* Split the left column 60% top news / 40% trends */
         #col-top { flex: 1.2; }
         #col-trends { flex: 0.8; }
 
@@ -114,7 +116,7 @@
             flex-direction: column;
             overflow: hidden;
             border: 1px solid #EAEAEA;
-            min-height: 0; /* Crucial for scrolling */
+            min-height: 0; 
             height: 100%;
         }
 
@@ -125,7 +127,7 @@
             background: #FFFFFF;
             border-bottom: 1px solid #EAEAEA;
             transition: border-top-color 0.3s ease, color 0.3s ease;
-            flex-shrink: 0; /* Prevents header from squishing */
+            flex-shrink: 0; 
         }
 
         #wrapper-top, #wrapper-trends, #wrapper-nesta { border-top: 6px solid var(--nesta-dark-blue); }
@@ -169,9 +171,9 @@
 
         .feed-container {
             padding: 0 1.5rem;
-            overflow-y: auto; /* Scrollbar appears here */
+            overflow-y: auto; 
             flex-grow: 1;
-            min-height: 0; /* Vital to stop container bursting out of grid */
+            min-height: 0; 
         }
 
         .fade-in { animation: fadeIn 0.4s ease-in-out; }
@@ -262,7 +264,7 @@
             line-height: 1.5;
         }
         
-        /* Disable height-lock on small screens so it stacks normally */
+        /* Mobile Layout */
         @media (max-width: 1200px) { 
             body { overflow: auto; }
             main { grid-template-columns: repeat(2, 1fr); height: auto; min-height: 100vh; }
@@ -283,13 +285,14 @@
         <div class="brand-area">
             <div class="nesta-logo">
                 <img src="nesta-logo.png" alt="Nesta" onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='block';">
+                <!-- UPDATED TITLE -->
                 <div id="logo-fallback" style="display: none; font-family: 'Century Gothic', sans-serif; font-weight: bold; font-size: 30px; color: #0000ff; letter-spacing: -1.5px; line-height: 1; margin: 0;">nesta</div>
             </div>
-            <div class="dashboard-title">Comms News Dashboard</div>
+            <div class="dashboard-title">News Dashboard</div>
         </div>
         <div class="time-area">
-            <div id="time">Loading...</div>
             <div id="date">Loading...</div>
+            <div id="time">Loading...</div>
         </div>
     </header>
     
@@ -362,10 +365,12 @@
         }
 
         // --- 3. SOURCES & CONFIGURATION ---
+        // NEW: Added Google News UK to Top News Sources
         const topNewsSources = [
             { name: "BBC News", url: "http://feeds.bbci.co.uk/news/uk/rss.xml" },
             { name: "Sky News", url: "https://feeds.skynews.com/feeds/rss/home.xml" },
-            { name: "ITV News", url: "https://rss.app/feeds/L9yrWziOwNyaJ0YV.xml" }
+            { name: "ITV News", url: "https://rss.app/feeds/L9yrWziOwNyaJ0YV.xml" },
+            { name: "Google News UK", url: "https://news.google.com/rss/headlines/section/geo/GB?hl=en-GB&gl=GB&ceid=GB:en" }
         ];
 
         const missionSources = [
@@ -388,12 +393,8 @@
             { name: "BBC Education", url: "http://feeds.bbci.co.uk/news/education/rss.xml" },
             { name: "BBC Health", url: "http://feeds.bbci.co.uk/news/health/rss.xml" },
             { name: "BBC Science/Env", url: "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml" },
-            
-            // Substack and Medium (Using Google News RSS for better UK scoping)
             { name: "Substack", url: "https://news.google.com/rss/search?q=site:substack.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "Medium", url: "https://news.google.com/rss/search?q=site:medium.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" },
-
-            // Google News UK Aggregation explicitly targeting your 7 mission parameters
             { name: "Google News UK", url: "https://news.google.com/rss/headlines/section/geo/GB?hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "Google News UK", url: "https://news.google.com/rss/search?q=(UK+OR+Britain)+AND+(childcare+OR+%22early+years%22+OR+%22child+poverty%22+OR+nursery+OR+ofsted)&hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "Google News UK", url: "https://news.google.com/rss/search?q=(UK+OR+Britain)+AND+(obesity+OR+%22junk+food%22+OR+wegovy+OR+ozempic+OR+%22sugar+tax%22)&hl=en-GB&gl=GB&ceid=GB:en" },
@@ -404,7 +405,7 @@
             { name: "Google News UK", url: "https://news.google.com/rss/search?q=(UK+OR+Britain)+AND+(housing+OR+%22house+building%22+OR+%22affordable+housing%22+OR+mortgages)&hl=en-GB&gl=GB&ceid=GB:en" }
         ];
 
-        // 7 THEMATIC DICTIONARIES (UK FOCUSED)
+        // NEW: Hyper-Specific Devolution Keywords based on Gov.UK scope
         const keywords = {
             fairer: [
                 "early years", "early childhood", "childcare", "nursery", "nurseries", "pre-school", "preschool", 
@@ -440,9 +441,10 @@
                 "automation", "algorithmic", "deepfake", "deepfakes", "tech regulation"
             ],
             devolution: [
-                "devolution", "metro mayor", "mayoral", "regional government", "combined authority", "sadiq khan", 
-                "andy burnham", "andy street", "ben houchen", "tracy brabin", "local council funding", 
-                "local government", "levelling up", "decentralisation", "scottish parliament", "welsh senedd", "stormont", "holyrood"
+                "devolution deal", "devolution deals", "english devolution", "metro mayor", "metro mayors", 
+                "combined authority", "combined authorities", "regional mayor", "regional mayors", "regional government", 
+                "decentralisation", "decentralization", "levelling up", "local leaders", "powers for local leaders", 
+                "devolve power", "devolved powers", "local governance"
             ],
             housing: [
                 "housing crisis", "affordable housing", "social housing", "house building", "planning permission", 
@@ -458,7 +460,6 @@
             "labour", "conservative", "tory", "tories", "lib dem", "reform uk", "budget", "cabinet", "election"
         ];
 
-        // AGGRESSIVE GEO & SPAM BLOCKLISTS
         const blocklist = [
             "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", 
             "german", "germany", "scholz", "berlin", "french", "france", "paris", "macron", "american", "america", "european union", "eu politics", "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "pentagon",
@@ -508,7 +509,8 @@
 
         // --- 4. SMART DEDUPLICATION LOGIC ---
         function isDuplicateTopic(newTitle, existingTitles) {
-            const stopWords = new Set(["this","that","with","from","your","what","have","they","will","when","who","some","make","like","time","just","know","take","into","year","them","want","work","than","now","could","other","over","then","good","only","would","also","back","after","use","two","how","our","first","well","way","even","new","because","any","these","give","day","most","us","and","the","for"]);
+            // Added more common stop words to ensure high accuracy when matching stories
+            const stopWords = new Set(["this","that","with","from","your","what","have","they","will","when","who","some","make","like","time","just","know","take","into","year","them","want","work","than","now","could","other","over","then","good","only","would","also","back","after","use","two","how","our","first","well","way","even","new","because","any","these","give","day","most","us","and","the","for","more","has","was","are","out","says","said","its","can","not","all"]);
             function getSignificantWords(title) {
                 return title.toLowerCase().replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w));
             }
@@ -516,6 +518,7 @@
             for (const existing of existingTitles) {
                 const existWords = getSignificantWords(existing);
                 const intersection = newWords.filter(w => existWords.includes(w));
+                // If 3 significant words match, it's considered the same story
                 if (intersection.length >= 3) return true;
             }
             return false;
@@ -637,7 +640,7 @@
             }
         }
 
-        // Fetch 3: MISSIONS (7 Topics, Rotates, Looks back 5 Days)
+        // Fetch 3: MISSIONS (7 Topics, Deduplicated)
         async function loadMissionStories() {
             let allMissionStories = [];
             const lookbackWindow = Date.now() - (120 * 60 * 60 * 1000);
@@ -698,10 +701,16 @@
             });
 
             missionData = { fairer: [], healthy: [], sustainable: [], economy: [], ai: [], devolution: [], housing: [] };
+            const existingMissionTitles = { fairer: [], healthy: [], sustainable: [], economy: [], ai: [], devolution: [], housing: [] };
             
+            // UPDATED: Apply deduplication to all 7 mission/category columns
             allMissionStories.forEach(story => {
-                if (missionData[story.targetMission].length < 10) {
-                    missionData[story.targetMission].push(story);
+                const target = story.targetMission;
+                if (missionData[target].length < 10) {
+                    if (!isDuplicateTopic(story.title, existingMissionTitles[target])) {
+                        missionData[target].push(story);
+                        existingMissionTitles[target].push(story.title);
+                    }
                 }
             });
         }
@@ -838,7 +847,7 @@
         }
 
         function autoRotate() {
-            currentRotationIndex = (currentRotationIndex + 1) % 7; // Updated to cycle 7 subjects
+            currentRotationIndex = (currentRotationIndex + 1) % 7; 
             renderRotatedMission();
         }
 
