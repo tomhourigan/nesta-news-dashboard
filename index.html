@@ -908,48 +908,160 @@
             });
         }
 
-        // Fetch 4: LATEST NESTA BLOGS (Multi-Source Robust Fallback)
+        // Fetch 4: LATEST NESTA BLOGS
+        // Prefer Nesta's live blog index. RSS/search feeds are retained as fallbacks.
+        async function fetchNestaBlogsFromWebsite() {
+            const nestaBlogUrl = "https://www.nesta.org.uk/blog/";
+            const attempts = [
+                { type: "direct", url: nestaBlogUrl },
+                { type: "allorigins-raw", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(nestaBlogUrl)}` },
+                { type: "allorigins-json", url: `https://api.allorigins.win/get?url=${encodeURIComponent(nestaBlogUrl)}` }
+            ];
+
+            for (const attempt of attempts) {
+                try {
+                    const response = await fetchWithTimeout(attempt.url, 9000);
+                    if (!response.ok) {
+                        console.warn(`Nesta website ${attempt.type} returned HTTP ${response.status}`);
+                        continue;
+                    }
+
+                    let html = "";
+                    if (attempt.type === "allorigins-json") {
+                        const data = await response.json();
+                        html = data && data.contents ? data.contents : "";
+                    } else {
+                        html = await response.text();
+                    }
+
+                    if (!html || html.length < 500) continue;
+
+                    const doc = new DOMParser().parseFromString(html, "text/html");
+                    const links = Array.from(doc.querySelectorAll('a[href]'));
+                    const found = [];
+                    const seen = new Set();
+
+                    for (const anchor of links) {
+                        let href = (anchor.getAttribute("href") || "").trim();
+                        if (!href) continue;
+
+                        try {
+                            href = new URL(href, nestaBlogUrl).href;
+                        } catch (e) {
+                            continue;
+                        }
+
+                        // Only accept individual Nesta blog articles, not the index itself.
+                        if (!/^https:\/\/(www\.)?nesta\.org\.uk\/blog\/.+/i.test(href)) continue;
+                        if (/\/blog\/?(?:[?#].*)?$/i.test(href)) continue;
+
+                        const canonical = href.split("#")[0].split("?")[0];
+                        if (seen.has(canonical)) continue;
+
+                        // Nesta's cards may wrap the title in a heading or expose it via the anchor.
+                        const card = anchor.closest("article, li, [class*='card'], [class*='listing'], [class*='result']") || anchor.parentElement;
+                        const heading = card ? card.querySelector("h2, h3, h4") : null;
+                        let title = ((heading && heading.textContent) || anchor.textContent || "")
+                            .replace(/\s+/g, " ")
+                            .trim();
+
+                        if (!title || title.length < 12) continue;
+                        if (/^(read more|learn more|view|blog)$/i.test(title)) continue;
+
+                        const cardText = card ? (card.textContent || "") : "";
+                        const dateMatch = cardText.match(/\b(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/i);
+                        const pubDate = dateMatch ? dateMatch[0] : Date.now();
+
+                        seen.add(canonical);
+                        found.push({
+                            title,
+                            link: canonical,
+                            description: "",
+                            pubDate
+                        });
+
+                        if (found.length >= 10) break;
+                    }
+
+                    if (found.length > 0) {
+                        console.info(`Loaded ${found.length} Nesta blogs from Nesta website via ${attempt.type}.`);
+                        return found;
+                    }
+                } catch (error) {
+                    console.warn(`Nesta website ${attempt.type} failed:`, error);
+                }
+            }
+
+            return [];
+        }
+
         async function loadNestaBlogs() {
             const container = document.getElementById("feed-nesta");
             container.innerHTML = `<div class="empty-state">Loading latest Nesta blogs…</div>`;
 
-            const nestaBlogSources = [
-                "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml",
-                "https://news.google.com/rss/search?q=site:nesta.org.uk/blog&hl=en-GB&gl=GB&ceid=GB:en",
-                "https://news.google.com/rss/search?q=site:nesta.org.uk+nesta&hl=en-GB&gl=GB&ceid=GB:en",
-                "https://openrss.org/feed/www.nesta.org.uk"
-            ];
+            let items = await fetchNestaBlogsFromWebsite();
 
-            // Try alternatives in parallel, but only two at a time to avoid a request burst.
-            const sourceResults = await mapWithConcurrency(nestaBlogSources, 2, async (url) => {
-                return await fetchRSS("Nesta Blogs", url);
-            });
+            // RSS/search fallbacks if the live Nesta page cannot be read from this browser/network.
+            if (!items.length) {
+                const nestaBlogSources = [
+                    "https://news.google.com/rss/search?q=site%3Anesta.org.uk%2Fblog%2F&hl=en-GB&gl=GB&ceid=GB%3Aen",
+                    "https://news.google.com/rss/search?q=site%3Anesta.org.uk%20Nesta%20blog&hl=en-GB&gl=GB&ceid=GB%3Aen",
+                    "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml",
+                    "https://openrss.org/feed/www.nesta.org.uk"
+                ];
 
-            const items = sourceResults.find(result => Array.isArray(result) && result.length > 0) || [];
+                const sourceResults = await mapWithConcurrency(nestaBlogSources, 2, async (url) => {
+                    return await fetchRSS("Nesta Blogs", url);
+                });
 
-            if (items && items.length > 0) {
+                items = sourceResults.find(result => Array.isArray(result) && result.length > 0) || [];
+            }
+
+            // Keep genuine Nesta blog URLs where possible and remove duplicate titles/links.
+            const unique = [];
+            const seenLinks = new Set();
+            const seenTitles = [];
+
+            for (const story of items) {
+                if (!story || !story.title || !story.link) continue;
+                const cleanTitle = String(story.title).replace(/<[^>]*>?/gm, '').replace(/\s+/g, ' ').trim();
+                const link = String(story.link).trim();
+                if (!cleanTitle || !link) continue;
+                if (seenLinks.has(link)) continue;
+                if (isDuplicateTopic(cleanTitle, seenTitles)) continue;
+
+                seenLinks.add(link);
+                seenTitles.push(cleanTitle);
+                unique.push({ ...story, title: cleanTitle, link });
+                if (unique.length >= 5) break;
+            }
+
+            if (unique.length > 0) {
                 container.innerHTML = "";
-                items.slice(0, 5).forEach(story => {
+                unique.forEach(story => {
                     const div = document.createElement("div");
                     div.className = "news-card";
-                    
+
                     const storyDate = new Date(story.pubDate);
                     const validDate = isNaN(storyDate.getTime()) ? new Date() : storyDate;
                     const dateStr = validDate.toLocaleDateString("en-GB", { day:'numeric', month:'short', year:'numeric' });
                     const cleanDateStr = dateStr.replace(/,/g, '');
-                    const cleanTitle = story.title.replace(/<[^>]*>?/gm, ''); 
 
                     div.innerHTML = `
                         <div class="meta-info">
                             <span class="source-badge" style="background-color: var(--nesta-dark-blue);">Nesta Blog</span>
                             <span class="date-text">${cleanDateStr}</span>
                         </div>
-                        <h4><a href="${story.link}" target="_blank"><strong>${cleanTitle}</strong></a></h4>
+                        <h4><a href="${story.link}" target="_blank" rel="noopener noreferrer"><strong>${story.title}</strong></a></h4>
                     `;
                     container.appendChild(div);
                 });
             } else {
-                container.innerHTML = `<div class="empty-state">Unable to load Nesta blogs at this time. Will try again shortly.</div>`;
+                container.innerHTML = `
+                    <div class="empty-state">
+                        Unable to load Nesta blogs automatically at this time.<br><br>
+                        <a href="https://www.nesta.org.uk/blog/" target="_blank" rel="noopener noreferrer">Open Nesta Blogs</a>
+                    </div>`;
             }
         }
 
