@@ -130,6 +130,7 @@
             flex-shrink: 0; 
         }
 
+        /* Headers with Specific Accents */
         #wrapper-top { border-top: 6px solid var(--nesta-dark-blue); }
         #wrapper-trends { border-top: 6px solid var(--trending); }
         #wrapper-nesta { border-top: 6px solid var(--nesta-primary-blue); } 
@@ -518,10 +519,11 @@
             "labour", "conservative", "tory", "tories", "lib dem", "reform uk", "budget", "cabinet", "election"
         ];
 
-        // AGGRESSIVE BLOCKLISTS
+        // AGGRESSIVE BLOCKLISTS (Expanded to filter US political terms in Trends)
         const blocklist = [
             "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", 
             "german", "germany", "scholz", "berlin", "french", "france", "paris", "macron", "american", "america", "european union", "eu politics", "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "pentagon",
+            "midterm", "midterms", "congress", "senate", "republican", "republicans", "democrat", "democrats", "gop", "house of representatives", "us election", "american election",
             "teenager", "teenagers", "teens", "university", "universities", "gcse", "gcses", "a-level", "a-levels", "higher education", "student", "students", "campus"
         ];
         
@@ -647,7 +649,7 @@
             });
         }
 
-        // Fetch 2: TRENDS (Hybrid Velocity Model: Reddit Real-Time Hot + Wikimedia Surge Tracker)
+        // Fetch 2: TRENDS (Hybrid Real-Time Hot Velocity + Wikipedia Surge Tracker + Strict UK Filtering)
         async function loadTrends() {
             const container = document.getElementById("feed-trends");
             
@@ -663,7 +665,9 @@
                 const items = await fetchRSS("Reddit", rssUrl);
                 items.forEach(item => {
                     const title = item.title || "";
-                    if (regTrendsFilter.test(title.toLowerCase())) {
+                    const lowerTitle = title.toLowerCase();
+                    // MUST match trend keywords AND MUST NOT match international/spam blocklists
+                    if (regTrendsFilter.test(lowerTitle) && !regBlocklist.test(lowerTitle) && !regBlogSpam.test(lowerTitle)) {
                         allTrends.push({ title: title, link: item.link });
                     }
                 });
@@ -685,7 +689,10 @@
                     
                     articles.forEach(art => {
                         const cleanTitle = art.article.replace(/_/g, ' ');
-                        if (!wikiStoplist.some(s => art.article.includes(s)) && regTrendsFilter.test(cleanTitle.toLowerCase())) {
+                        const lowerTitle = cleanTitle.toLowerCase();
+                        if (!wikiStoplist.some(s => art.article.includes(s)) && 
+                            regTrendsFilter.test(lowerTitle) && 
+                            !regBlocklist.test(lowerTitle)) {
                             allTrends.push({
                                 title: cleanTitle,
                                 link: `https://en.wikipedia.org/wiki/${art.article}`
@@ -721,7 +728,7 @@
                     container.appendChild(div);
                 });
             } else {
-                container.innerHTML = `<div class="empty-state">No major social media trends currently matching your policy filters.</div>`;
+                container.innerHTML = `<div class="empty-state">No major UK social media trends currently matching your policy filters.</div>`;
             }
         }
 
