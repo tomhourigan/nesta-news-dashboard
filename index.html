@@ -336,7 +336,6 @@
             const dateStr = now.toLocaleDateString('en-GB', { 
                 weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Europe/London' 
             });
-            // Strip the comma from the date string
             document.getElementById('date').textContent = dateStr.replace(/,/g, '');
             document.getElementById('time').textContent = now.toLocaleTimeString('en-GB', { 
                 hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/London' 
@@ -387,30 +386,27 @@
             { name: "BBC Health", url: "http://feeds.bbci.co.uk/news/health/rss.xml" },
             { name: "BBC Science/Env", url: "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml" },
             
-            // Substack and Medium (Using Google News RSS for better UK/Topic scoping)
+            // Substack and Medium (Using Google News RSS for better UK scoping)
             { name: "Substack", url: "https://news.google.com/rss/search?q=site:substack.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "Medium", url: "https://news.google.com/rss/search?q=site:medium.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" }
         ];
 
+        // HIGHLY PRECISE KEYWORDS BASED ON NESTA'S 2030 GOALS
         const keywords = {
             fairer: [
-                "early years", "early years education", "education", "childcare", "school", "schools", 
-                "nursery", "nurseries", "pupil", "pupils", "teacher", "teachers", "child poverty", 
-                "university", "universities", "ofsted", "tuition", "a-level", "a-levels", "gcse", "gcses", 
-                "child", "children", "childhood", "growing up", "kids", "parenting", "youth", "maternity", "paternity"
+                "early years", "early childhood", "childcare", "nursery", "nurseries", "pre-school", "preschool",
+                "childminder", "childminders", "parenting interventions", "family support", "child benefit",
+                "sure start", "family hubs", "child poverty", "early education", "maternity pay", "paternity pay"
             ],
             healthy: [
-                "health", "healthy eating", "obesity", "glp-1", "glp1", "wegovy", "ozempic", "mounjaro", 
-                "weight loss", "weight-loss", "weight", "public health", "public health strategy", 
-                "nhs", "sugar tax", "junk food", "calorie", "calories", "diabetes", "vaping", 
-                "ultra-processed", "upf", "upfs", "diet", "nutrition", "food policy", "health policy"
+                "obesity", "glp-1", "glp1", "wegovy", "ozempic", "mounjaro", "weight loss", "weight-loss",
+                "sugar tax", "junk food", "calorie", "calories", "ultra-processed", "upf", "upfs", "food policy",
+                "food environment", "healthy eating", "food advertising", "hfss", "childhood obesity"
             ],
             sustainable: [
-                "climate", "climate change", "sustainability", "sustainable", "net zero", "net-zero", 
-                "carbon", "emissions", "green energy", "fossil fuel", "fossil fuels", "global warming", 
-                "environment", "environmental", "heat pump", "heat pumps", "wind farm", "wind farms", 
-                "solar", "cop28", "cop29", "cop30", "renewable", "renewables", "clean energy", 
-                "electricity", "power", "north sea oil", "north sea gas", "oil and gas", "energy bill", "energy bills"
+                "heat pump", "heat pumps", "low-carbon heating", "low carbon heating", "household emissions",
+                "home insulation", "retrofit", "boiler upgrade", "gas boiler", "net zero homes", "domestic energy",
+                "green workforce", "clean heating", "energy bill", "energy bills", "net zero", "carbon emissions"
             ]
         };
 
@@ -422,16 +418,23 @@
             "interest rates", "bank of england", "budget", "chancellor", "cabinet", "election"
         ];
 
+        // MASSIVELY EXPANDED BLOCKLISTS TO REMOVE JUNK
         const blocklist = [
-            "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", 
-            "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "macron", "germany", "scholz", "pentagon"
+            // Sports & Entertainment
+            "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", "fashion", "designer", "actor", "actress", "film", "movie", "pop star", "album", "music",
+            // International
+            "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "macron", "germany", "scholz", "pentagon",
+            // Unrelated Demographics (Older kids)
+            "teenager", "teenagers", "teens", "university", "universities", "gcse", "gcses", "a-level", "a-levels", "higher education", "student", "students", "campus"
         ];
 
         // Specific blocklist to catch spammy Medium/Substack lifestyle posts
-        const blogSpamBlocklist = ["hair", "beauty", "skincare", "wellness", "yoga", "astrology", "horoscope", "crypto", "stress", "beautiful people", "lose weight fast", "diet plan", "workout", "muscle"];
+        const blogSpamBlocklist = ["hair", "beauty", "skincare", "wellness", "yoga", "astrology", "horoscope", "crypto", "stress", "beautiful people", "lose weight fast", "diet plan", "workout", "muscle", "spiritual"];
 
+        // Removes soft news, paper summaries, and royalty
         const summaryBlocklist = ["front page", "what the papers say", "briefing", "round-up", "papers:", "newspaper", "at a glance", "catch up", "your morning", "evening news", "daily round-up"];
-        const softNewsBlocklist = ["opinion:", "review:", "how to", "guide", "catherine", "kate middleton", "prince william", "prince harry", "meghan markle", "royal family", "charity climb"];
+        const softNewsBlocklist = ["opinion:", "review:", "how to", "guide", "catherine", "kate middleton", "princess of wales", "prince william", "prince harry", "meghan markle", "royal family", "royal visit", "bruce willis", "illness", "diagnosis", "cancer", "tumor", "surgery", "hospital appearance", "red carpet", "spotted"];
+        
         const blockedUrlPaths = ["/world/", "/world-news/", "/us-news/", "/australia-news/", "/international/", "/global/"];
 
         function createRegex(keywordArray) {
@@ -448,7 +451,7 @@
         const regSummaryBlocklist = createRegex(summaryBlocklist);
         const regSoftNewsBlocklist = createRegex(softNewsBlocklist);
         
-        // Catches standalone first-person pronouns for narrative articles
+        // Catches standalone first-person pronouns for narrative/opinion articles
         const firstPersonRegex = /\b(i|my|me|mine|we tried|i went)\b/i;
 
         let missionData = { fairer: [], healthy: [], sustainable: [] };
@@ -478,7 +481,7 @@
 
         // --- 5. FETCHERS ---
 
-        // Fetch 1: TOP UK STORIES (Strict Hard News Filter)
+        // Fetch 1: TOP UK STORIES
         async function loadTopStories() {
             const container = document.getElementById("feed-top");
             let stories = [];
@@ -495,7 +498,7 @@
                             const description = item.description || "";
                             const searchText = (title + " " + description).toLowerCase();
 
-                            // Filter out summaries, round-ups, and soft/narrative news
+                            // Filter out soft news, summaries, royals, and narrative first-person pieces
                             if (regSummaryBlocklist.test(searchText) || 
                                 regSoftNewsBlocklist.test(searchText) || 
                                 firstPersonRegex.test(title.toLowerCase())) {
@@ -622,8 +625,8 @@
                             if (articleTimestamp >= lookbackWindow) {
                                 const searchText = (title + " " + description).toLowerCase();
                                 
-                                // Catch standard blocklist and specific blog spam blocklist
-                                if (regBlocklist.test(searchText) || regBlogSpam.test(searchText)) return;
+                                // NEW: We block general blocklist, blog spam, AND the soft news (royals/celebrities)
+                                if (regBlocklist.test(searchText) || regBlogSpam.test(searchText) || regSoftNewsBlocklist.test(searchText)) return;
 
                                 let targetMission = null;
                                 if (regFairer.test(searchText)) targetMission = "fairer";
@@ -632,7 +635,7 @@
                                 
                                 if (targetMission) {
                                     if (!allMissionStories.some(s => s.link === item.link)) {
-                                        // Flag if it's a blog source so we can sort them lower later
+                                        // Flag if it's a blog source so we can sort them lower
                                         const isBlog = source.name.includes("Substack") || source.name.includes("Medium");
                                         
                                         allMissionStories.push({
@@ -668,7 +671,7 @@
         // Fetch 4: LATEST NESTA BLOGS 
         async function loadNestaBlogs() {
             const container = document.getElementById("feed-nesta");
-            // The custom RSS.app feed provided by the user
+            // Your new working RSS.app link specifically for Nesta blogs
             const nestaUrl = "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml"; 
 
             const proxyList = [
@@ -732,12 +735,14 @@
                     const storyDate = new Date(story.pubDate);
                     const validDate = isNaN(storyDate.getTime()) ? new Date() : storyDate;
                     const dateStr = validDate.toLocaleDateString("en-GB", { day:'numeric', month:'short', year:'numeric' });
+                    // Clean comma from date here too just in case
+                    const cleanDateStr = dateStr.replace(/,/g, '');
                     const cleanTitle = story.title.replace(/<[^>]*>?/gm, ''); 
 
                     div.innerHTML = `
                         <div class="meta-info">
                             <span class="source-badge" style="background-color: var(--nesta-dark-blue);">Nesta Blog</span>
-                            <span class="date-text">${dateStr}</span>
+                            <span class="date-text">${cleanDateStr}</span>
                         </div>
                         <h4><a href="${story.link}" target="_blank"><strong>${cleanTitle}</strong></a></h4>
                     `;
@@ -805,6 +810,7 @@
 
         // --- 7. INDEPENDENT BOOTSTRAPPING ---
         async function bootDashboard() {
+            // Load everything independently
             loadTopStories();
             loadTrends();
             loadNestaBlogs(); 
