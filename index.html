@@ -147,6 +147,11 @@
             color: var(--trending);
         }
 
+        /* Updated: Latest Nesta Blogs text color now matches panel accent */
+        #wrapper-nesta .mission-header {
+            color: var(--nesta-primary-blue);
+        }
+
         .mission-controls {
             display: flex;
             gap: 8px;
@@ -350,7 +355,7 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        // --- 2. UNIVERSAL SAFE FETCH (PROXY WATERFALL) ---
+        // --- 2. UNIVERSAL SAFE FETCH & SAFARI XML PARSER ---
         async function fetchWithTimeout(url, timeoutMs = 8000) {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -364,13 +369,30 @@
             }
         }
 
+        function getXmlNodeText(parent, tagNames) {
+            for (const tag of tagNames) {
+                let el = parent.querySelector(tag);
+                if (!el && parent.getElementsByTagName) {
+                    const els = parent.getElementsByTagName(tag);
+                    if (els && els.length > 0) el = els[0];
+                }
+                if (el) {
+                    const text = el.textContent || el.innerText || "";
+                    if (text.trim()) return text.trim();
+                }
+            }
+            return "";
+        }
+
         async function fetchRSS(sourceName, url) {
             let items = [];
+            const secureUrl = url.replace(/^http:\/\//i, 'https://');
             
             const proxyList = [
-                `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`,
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}&t=${Date.now()}`,
-                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+                `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(secureUrl)}`,
+                `https://corsproxy.io/?${encodeURIComponent(secureUrl)}`,
+                `https://api.allorigins.win/get?url=${encodeURIComponent(secureUrl)}&t=${Date.now()}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(secureUrl)}`
             ];
 
             for (let i = 0; i < proxyList.length; i++) {
@@ -378,37 +400,24 @@
                     const response = await fetchWithTimeout(proxyList[i], 6000);
                     if (!response.ok) continue;
 
-                    if (proxyList[i].includes('api.json')) {
+                    if (proxyList[i].includes('rss2json.com')) {
                         const data = await response.json();
                         if (data.status === 'ok' && data.items && data.items.length > 0) {
                             items = data.items;
                             break;
                         }
+                    } else if (proxyList[i].includes('allorigins.win')) {
+                        const data = await response.json();
+                        const xmlText = data.contents || "";
+                        if (xmlText.includes("<rss") || xmlText.includes("<feed") || xmlText.includes("<xml")) {
+                            items = parseRawXml(xmlText);
+                            if (items.length > 0) break;
+                        }
                     } else {
                         const xmlText = await response.text();
-                        if (xmlText.includes("<rss") || xmlText.includes("<feed")) {
-                            const parser = new DOMParser();
-                            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-                            const xmlItems = Array.from(xmlDoc.querySelectorAll("item, entry"));
-                            if (xmlItems.length > 0) {
-                                items = xmlItems.map(item => {
-                                    const titleNode = item.querySelector("title");
-                                    const linkNode = item.querySelector("link");
-                                    const pubDateNode = item.querySelector("pubDate, published, updated");
-                                    const descNode = item.querySelector("description, summary, content");
-                                    
-                                    let linkUrl = "";
-                                    if (linkNode) linkUrl = linkNode.textContent || linkNode.getAttribute("href") || "";
-
-                                    return {
-                                        title: titleNode ? titleNode.textContent : "",
-                                        link: linkUrl,
-                                        description: descNode ? descNode.textContent : "",
-                                        pubDate: pubDateNode ? pubDateNode.textContent : Date.now()
-                                    };
-                                });
-                                break;
-                            }
+                        if (xmlText.includes("<rss") || xmlText.includes("<feed") || xmlText.includes("<xml")) {
+                            items = parseRawXml(xmlText);
+                            if (items.length > 0) break;
                         }
                     }
                 } catch (e) { } 
@@ -416,23 +425,51 @@
             return items;
         }
 
+        function parseRawXml(xmlText) {
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+                const xmlItems = Array.from(xmlDoc.querySelectorAll("item, entry"));
+                
+                return xmlItems.map(item => {
+                    const title = getXmlNodeText(item, ["title"]);
+                    let link = getXmlNodeText(item, ["link"]);
+                    if (!link) {
+                        const linkEl = item.querySelector("link");
+                        if (linkEl) link = linkEl.getAttribute("href") || "";
+                    }
+                    const pubDate = getXmlNodeText(item, ["pubDate", "published", "updated"]);
+                    const desc = getXmlNodeText(item, ["description", "summary", "content"]);
+
+                    return {
+                        title: title,
+                        link: link,
+                        description: desc,
+                        pubDate: pubDate || Date.now()
+                    };
+                }).filter(item => item.title && item.link);
+            } catch(e) {
+                return [];
+            }
+        }
+
         // --- 3. SOURCES & CONFIGURATION ---
 
         const topNewsSources = [
-            { name: "BBC News", url: "http://feeds.bbci.co.uk/news/uk/rss.xml" },
+            { name: "BBC News", url: "https://feeds.bbci.co.uk/news/uk/rss.xml" },
             { name: "Sky News", url: "https://feeds.skynews.com/feeds/rss/home.xml" },
             { name: "ITV News", url: "https://rss.app/feeds/L9yrWziOwNyaJ0YV.xml" },
             { name: "Google News UK", url: "https://news.google.com/rss/headlines/section/geo/GB?hl=en-GB&gl=GB&ceid=GB:en" }
         ];
 
         const missionSources = [
-            { name: "BBC News", url: "http://feeds.bbci.co.uk/news/uk/rss.xml" },
+            { name: "BBC News", url: "https://feeds.bbci.co.uk/news/uk/rss.xml" },
             { name: "Sky News", url: "https://feeds.skynews.com/feeds/rss/home.xml" },
             { name: "ITV News", url: "https://rss.app/feeds/L9yrWziOwNyaJ0YV.xml" },
             { name: "The Guardian", url: "https://www.theguardian.com/uk/rss" },
             { name: "Guardian UK", url: "https://openrss.org/feed/www.theguardian.com/uk" },
             { name: "The Telegraph", url: "https://www.telegraph.co.uk/rss.xml" },
-            { name: "The Independent", url: "http://www.independent.co.uk/rss" },
+            { name: "The Independent", url: "https://www.independent.co.uk/rss" },
             { name: "Daily Mail", url: "https://www.dailymail.co.uk/articles.rss" },
             { name: "Evening Standard", url: "https://www.standard.co.uk/rss" },
             { name: "HuffPost UK", url: "https://www.huffingtonpost.co.uk/feeds/index.xml" },
@@ -467,7 +504,7 @@
             { name: "Google News UK", url: "https://news.google.com/rss/search?q=(UK+OR+Britain)+AND+(housing+OR+%22house+building%22+OR+%22affordable+housing%22+OR+mortgages)&hl=en-GB&gl=GB&ceid=GB:en" }
         ];
 
-        // 7 THEMATIC DICTIONARIES (Tightened to exclude generic political horse-race news)
+        // 7 THEMATIC DICTIONARIES (Devolution includes standalone council/government terms)
         const keywords = {
             fairer: [
                 "early years", "early childhood", "childcare", "nursery", "nurseries", "pre-school", "preschool", 
@@ -503,10 +540,12 @@
                 "automation", "algorithmic", "deepfake", "deepfakes", "tech regulation"
             ],
             devolution: [
-                "devolution deal", "devolution deals", "english devolution", "metro mayor", "metro mayors", 
-                "combined authority", "combined authorities", "regional mayor", "regional mayors", "regional government", 
-                "decentralisation", "decentralization", "levelling up", "local leaders", "powers for local leaders", 
-                "devolve power", "devolved powers", "local governance", "government machinery"
+                "devolution", "devolved", "devolution deal", "devolution deals", "english devolution", 
+                "metro mayor", "metro mayors", "combined authority", "combined authorities", 
+                "regional mayor", "regional mayors", "regional government", "decentralisation", 
+                "decentralization", "levelling up", "local leaders", "powers for local leaders", 
+                "devolve power", "devolved powers", "local governance", "local council", "local councils", 
+                "local government", "council overhaul", "councils overhaul", "council reorganisation", "government machinery"
             ],
             housing: [
                 "housing crisis", "affordable housing", "social housing", "house building", "planning permission", 
@@ -522,7 +561,7 @@
             "labour", "conservative", "tory", "tories", "lib dem", "reform uk", "budget", "cabinet", "election"
         ];
 
-        // AGGRESSIVE BLOCKLISTS (Includes political horse-race / election noise filters)
+        // AGGRESSIVE BLOCKLISTS
         const blocklist = [
             "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", 
             "german", "germany", "scholz", "berlin", "french", "france", "paris", "macron", "american", "america", "european union", "eu politics", "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "pentagon",
@@ -633,7 +672,7 @@
             }
             
             if(top5.length === 0) {
-                container.innerHTML = `<div class="empty-state">Loading latest news...</div>`;
+                container.innerHTML = `<div class="empty-state">Unable to load Top Stories at this time. Will retry shortly.</div>`;
                 return;
             }
 
@@ -653,7 +692,7 @@
             });
         }
 
-        // Fetch 2: TRENDS (Hybrid Real-Time Hot Velocity + Wikipedia Surge Tracker)
+        // Fetch 2: TRENDS
         async function loadTrends() {
             const container = document.getElementById("feed-trends");
             
@@ -735,7 +774,7 @@
             }
         }
 
-        // Fetch 3: MISSIONS (7 Topics, Headline-Primary Keyword Matching)
+        // Fetch 3: MISSIONS (Headline-Primary Blocklist + Description Safety Check)
         async function loadMissionStories() {
             let allMissionStories = [];
             const lookbackWindow = Date.now() - (120 * 60 * 60 * 1000);
@@ -755,14 +794,12 @@
                     if (articleTimestamp >= lookbackWindow) {
                         const lowerTitle = title.toLowerCase();
                         const lowerDesc = description.toLowerCase();
-                        const fullText = lowerTitle + " " + lowerDesc;
                         
-                        // Strict Blocklist Application
-                        if (regBlocklist.test(fullText) || regBlogSpam.test(fullText) || regSoftNewsBlocklist.test(fullText)) return;
+                        // Check blocklist against headline FIRST to prevent valid policy articles getting dropped by background description words
+                        if (regBlocklist.test(lowerTitle) || regBlogSpam.test(lowerTitle) || regSoftNewsBlocklist.test(lowerTitle)) return;
 
                         let targetMission = null;
                         
-                        // HEADLINE-PRIMARY MATCHING: Check headline first to eliminate noisy teaser false-positives
                         if (regexes.fairer.test(lowerTitle)) targetMission = "fairer";
                         else if (regexes.healthy.test(lowerTitle)) targetMission = "healthy";
                         else if (regexes.sustainable.test(lowerTitle)) targetMission = "sustainable";
@@ -771,15 +808,18 @@
                         else if (regexes.devolution.test(lowerTitle)) targetMission = "devolution";
                         else if (regexes.housing.test(lowerTitle)) targetMission = "housing";
                         
-                        // SECONDARY FALLBACK: Check description only if title didn't match and description is highly explicit
+                        // Fallback check on description only if headline didn't trigger a match
                         if (!targetMission) {
-                            if (regexes.fairer.test(lowerDesc)) targetMission = "fairer";
-                            else if (regexes.healthy.test(lowerDesc)) targetMission = "healthy";
-                            else if (regexes.sustainable.test(lowerDesc)) targetMission = "sustainable";
-                            else if (regexes.economy.test(lowerDesc)) targetMission = "economy";
-                            else if (regexes.ai.test(lowerDesc)) targetMission = "ai";
-                            else if (regexes.devolution.test(lowerDesc)) targetMission = "devolution";
-                            else if (regexes.housing.test(lowerDesc)) targetMission = "housing";
+                            const fullText = lowerTitle + " " + lowerDesc;
+                            if (!regBlocklist.test(fullText) && !regBlogSpam.test(fullText) && !regSoftNewsBlocklist.test(fullText)) {
+                                if (regexes.fairer.test(lowerDesc)) targetMission = "fairer";
+                                else if (regexes.healthy.test(lowerDesc)) targetMission = "healthy";
+                                else if (regexes.sustainable.test(lowerDesc)) targetMission = "sustainable";
+                                else if (regexes.economy.test(lowerDesc)) targetMission = "economy";
+                                else if (regexes.ai.test(lowerDesc)) targetMission = "ai";
+                                else if (regexes.devolution.test(lowerDesc)) targetMission = "devolution";
+                                else if (regexes.housing.test(lowerDesc)) targetMission = "housing";
+                            }
                         }
                         
                         if (targetMission) {
