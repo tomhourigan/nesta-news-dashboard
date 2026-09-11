@@ -357,7 +357,7 @@
         updateClock();
 
         // --- 2. UNIVERSAL SAFE FETCH & SAFARI XML PARSER ---
-        async function fetchWithTimeout(url, timeoutMs = 8000) {
+        async function fetchWithTimeout(url, timeoutMs = 6000) {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeoutMs);
             try {
@@ -389,30 +389,48 @@
             let items = [];
             const secureUrl = url.replace(/^http:\/\//i, 'https://');
             
-            // Re-ordered to prioritize CORS-friendly endpoints for mobile Safari
+            // Waterfall configured specifically for CORS-restricted mobile browsers
             const proxyList = [
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(secureUrl)}`,
-                `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(secureUrl)}`,
-                `https://corsproxy.io/?${encodeURIComponent(secureUrl)}`,
-                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(secureUrl)}`
+                { type: 'allorigins', url: `https://api.allorigins.win/get?url=${encodeURIComponent(secureUrl)}` },
+                { type: 'rss2json', url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(secureUrl)}` },
+                { type: 'raw', url: `https://corsproxy.io/?${encodeURIComponent(secureUrl)}` },
+                { type: 'raw', url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(secureUrl)}` }
             ];
 
             for (let i = 0; i < proxyList.length; i++) {
                 try {
-                    const response = await fetchWithTimeout(proxyList[i], 6000);
+                    const p = proxyList[i];
+                    const response = await fetchWithTimeout(p.url, 5000);
                     if (!response.ok) continue;
 
-                    if (proxyList[i].includes('rss2json.com')) {
+                    if (p.type === 'allorigins') {
                         const data = await response.json();
-                        if (data.status === 'ok' && data.items && data.items.length > 0) {
-                            items = data.items;
+                        if (data && data.contents && data.contents.length > 50) {
+                            const parsed = parseRawXml(data.contents);
+                            if (parsed && parsed.length > 0) {
+                                items = parsed;
+                                break;
+                            }
+                        }
+                    } else if (p.type === 'rss2json') {
+                        const data = await response.json();
+                        if (data && data.status === 'ok' && data.items && data.items.length > 0) {
+                            items = data.items.map(item => ({
+                                title: item.title || "",
+                                link: item.link || "",
+                                description: item.description || item.content || "",
+                                pubDate: item.pubDate || Date.now()
+                            }));
                             break;
                         }
-                    } else {
+                    } else if (p.type === 'raw') {
                         const xmlText = await response.text();
-                        if (xmlText.includes("<rss") || xmlText.includes("<feed") || xmlText.includes("<xml")) {
-                            items = parseRawXml(xmlText);
-                            if (items.length > 0) break;
+                        if (xmlText && xmlText.length > 50) {
+                            const parsed = parseRawXml(xmlText);
+                            if (parsed && parsed.length > 0) {
+                                items = parsed;
+                                break;
+                            }
                         }
                     }
                 } catch (e) { } 
@@ -422,8 +440,11 @@
 
         function parseRawXml(xmlText) {
             try {
+                if (!xmlText) return [];
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+                if (xmlDoc.querySelector("parsererror")) return [];
+
                 const xmlItems = Array.from(xmlDoc.querySelectorAll("item, entry"));
                 
                 return xmlItems.map(item => {
@@ -442,7 +463,7 @@
                         description: desc,
                         pubDate: pubDate || Date.now()
                     };
-                }).filter(item => item.title && item.link);
+                }).filter(item => item.title && item.title.trim().length > 0 && item.link);
             } catch(e) {
                 return [];
             }
@@ -454,6 +475,8 @@
             { name: "BBC News", url: "https://feeds.bbci.co.uk/news/uk/rss.xml" },
             { name: "Sky News", url: "https://feeds.skynews.com/feeds/rss/home.xml" },
             { name: "ITV News", url: "https://rss.app/feeds/L9yrWziOwNyaJ0YV.xml" },
+            { name: "The Guardian", url: "https://www.theguardian.com/uk/rss" },
+            { name: "The Telegraph", url: "https://www.telegraph.co.uk/rss.xml" },
             { name: "Google News UK", url: "https://news.google.com/rss/headlines/section/geo/GB?hl=en-GB&gl=GB&ceid=GB:en" }
         ];
 
@@ -556,7 +579,7 @@
             "labour", "conservative", "tory", "tories", "lib dem", "reform uk", "budget", "cabinet", "election"
         ];
 
-        // AGGRESSIVE BLOCKLISTS (Expanded to filter Swiss Alps crash and foreign accidents)
+        // AGGRESSIVE BLOCKLISTS
         const blocklist = [
             "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", 
             "german", "germany", "scholz", "berlin", "french", "france", "paris", "macron", "american", "america", "european union", "eu politics", "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "pentagon",
@@ -631,7 +654,7 @@
 
         // --- 5. FETCHERS ---
 
-        // Fetch 1: TOP UK STORIES (Now includes regBlocklist check)
+        // Fetch 1: TOP UK STORIES
         async function loadTopStories() {
             const container = document.getElementById("feed-top");
             let stories = [];
@@ -643,7 +666,6 @@
                     const description = item.description || "";
                     const searchText = (title + " " + description).toLowerCase();
 
-                    // Fixed: regBlocklist check added to stop non-UK crashes/events in Top Stories
                     if (regBlocklist.test(searchText) || regSummaryBlocklist.test(searchText) || regSoftNewsBlocklist.test(searchText) || firstPersonRegex.test(title)) return;
 
                     const parsedDate = new Date(item.pubDate || "").getTime();
@@ -771,7 +793,7 @@
             }
         }
 
-        // Fetch 3: MISSIONS (Headline-Primary Blocklist + Description Safety Check)
+        // Fetch 3: MISSIONS
         async function loadMissionStories() {
             let allMissionStories = [];
             const lookbackWindow = Date.now() - (120 * 60 * 60 * 1000);
@@ -851,17 +873,19 @@
             });
         }
 
-        // Fetch 4: LATEST NESTA BLOGS (With Google News Search Fallback for Mobile Devices)
+        // Fetch 4: LATEST NESTA BLOGS (With Primary + Backup Endpoints)
         async function loadNestaBlogs() {
             const container = document.getElementById("feed-nesta");
-            const nestaUrl = "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml"; 
+            const nestaBlogSources = [
+                "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml",
+                "https://openrss.org/feed/www.nesta.org.uk",
+                "https://news.google.com/rss/search?q=site:nesta.org.uk&hl=en-GB&gl=GB&ceid=GB:en"
+            ];
 
-            let items = await fetchRSS("Nesta Blogs", nestaUrl);
-
-            // Mobile fallback if rss.app proxy fails on non-desktop networks
-            if (!items || items.length === 0) {
-                const fallbackUrl = "https://news.google.com/rss/search?q=site:nesta.org.uk&hl=en-GB&gl=GB&ceid=GB:en";
-                items = await fetchRSS("Nesta Blogs", fallbackUrl);
+            let items = [];
+            for (const url of nestaBlogSources) {
+                items = await fetchRSS("Nesta Blogs", url);
+                if (items && items.length > 0) break;
             }
 
             if (items && items.length > 0) {
