@@ -434,47 +434,31 @@
         async function fetchRSS(sourceName, url) {
             const secureUrl = url.replace(/^http:\/\//i, 'https://');
 
-            // Primary route: RSS2JSON. It is browser-friendly and avoids direct RSS CORS issues.
+            // FAST CLIENT-SIDE MODE:
+            // Use one browser-safe RSS gateway only. Multiple sequential public proxy
+            // fallbacks made the dashboard wait 15-30 seconds for every bad source.
             try {
                 const rss2jsonUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(secureUrl)}`;
-                const response = await fetchWithTimeout(rss2jsonUrl, 8000);
+                const response = await fetchWithTimeout(rss2jsonUrl, 5000);
 
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data && data.status === 'ok' && Array.isArray(data.items) && data.items.length > 0) {
-                        return data.items.map(item => ({
-                            title: item.title || "",
-                            link: item.link || "",
-                            description: item.description || item.content || "",
-                            pubDate: item.pubDate || Date.now()
-                        }));
-                    }
-                } else {
+                if (!response.ok) {
                     console.warn(`RSS2JSON HTTP ${response.status} for ${sourceName}`);
+                    return [];
+                }
+
+                const data = await response.json();
+                if (data && data.status === 'ok' && Array.isArray(data.items)) {
+                    return data.items.map(item => ({
+                        title: item.title || "",
+                        link: item.link || "",
+                        description: item.description || item.content || "",
+                        pubDate: item.pubDate || Date.now()
+                    })).filter(item => item.title && item.link);
                 }
             } catch (error) {
-                console.warn(`RSS2JSON failed for ${sourceName}:`, error);
+                console.warn(`Feed failed quickly for ${sourceName}:`, error);
             }
 
-            // Fallback route: AllOrigins raw endpoint, then parse the XML locally.
-            try {
-                const allOriginsUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(secureUrl)}`;
-                const response = await fetchWithTimeout(allOriginsUrl, 8000);
-
-                if (response.ok) {
-                    const xmlText = await response.text();
-                    if (xmlText && xmlText.length > 30) {
-                        const parsed = parseRawXml(xmlText);
-                        if (parsed.length > 0) return parsed;
-                    }
-                } else {
-                    console.warn(`AllOrigins HTTP ${response.status} for ${sourceName}`);
-                }
-            } catch (error) {
-                console.warn(`AllOrigins failed for ${sourceName}:`, error);
-            }
-
-            console.warn(`No RSS data returned for ${sourceName}: ${secureUrl}`);
             return [];
         }
 
@@ -760,16 +744,16 @@
             
             let allTrends = [];
 
-            for (const rssUrl of redditUrls) {
-                const items = await fetchRSS("Reddit", rssUrl);
-                items.forEach(item => {
-                    const title = item.title || "";
-                    const lowerTitle = title.toLowerCase();
-                    if (regTrendsFilter.test(lowerTitle) && !regBlocklist.test(lowerTitle) && !regBlogSpam.test(lowerTitle)) {
-                        allTrends.push({ title: title, link: item.link });
-                    }
-                });
-            }
+            const redditResults = await Promise.all(
+                redditUrls.map(rssUrl => fetchRSS("Reddit", rssUrl))
+            );
+            redditResults.flat().forEach(item => {
+                const title = item.title || "";
+                const lowerTitle = title.toLowerCase();
+                if (regTrendsFilter.test(lowerTitle) && !regBlocklist.test(lowerTitle) && !regBlogSpam.test(lowerTitle)) {
+                    allTrends.push({ title: title, link: item.link });
+                }
+            });
 
             try {
                 const yesterday = new Date(Date.now() - 86400000);
@@ -835,7 +819,7 @@
             let allMissionStories = [];
             const lookbackWindow = Date.now() - (120 * 60 * 60 * 1000);
 
-            await mapWithConcurrency(missionSources, 5, async (source) => {
+            await mapWithConcurrency(missionSources, 4, async (source) => {
                 const items = await fetchRSS(source.name, source.url);
                 items.forEach(item => {
                     const title = item.title || "";
@@ -909,143 +893,63 @@
         }
 
         // Fetch 4: LATEST NESTA BLOGS
-        // Prefer Nesta's live blog index. RSS/search feeds are retained as fallbacks.
-        async function fetchNestaBlogsFromWebsite() {
-            const nestaBlogUrl = "https://www.nesta.org.uk/blog/";
-            const attempts = [
-                { type: "direct", url: nestaBlogUrl },
-                { type: "allorigins-raw", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(nestaBlogUrl)}` },
-                { type: "allorigins-json", url: `https://api.allorigins.win/get?url=${encodeURIComponent(nestaBlogUrl)}` }
-            ];
-
-            for (const attempt of attempts) {
-                try {
-                    const response = await fetchWithTimeout(attempt.url, 9000);
-                    if (!response.ok) {
-                        console.warn(`Nesta website ${attempt.type} returned HTTP ${response.status}`);
-                        continue;
-                    }
-
-                    let html = "";
-                    if (attempt.type === "allorigins-json") {
-                        const data = await response.json();
-                        html = data && data.contents ? data.contents : "";
-                    } else {
-                        html = await response.text();
-                    }
-
-                    if (!html || html.length < 500) continue;
-
-                    const doc = new DOMParser().parseFromString(html, "text/html");
-                    const links = Array.from(doc.querySelectorAll('a[href]'));
-                    const found = [];
-                    const seen = new Set();
-
-                    for (const anchor of links) {
-                        let href = (anchor.getAttribute("href") || "").trim();
-                        if (!href) continue;
-
-                        try {
-                            href = new URL(href, nestaBlogUrl).href;
-                        } catch (e) {
-                            continue;
-                        }
-
-                        // Only accept individual Nesta blog articles, not the index itself.
-                        if (!/^https:\/\/(www\.)?nesta\.org\.uk\/blog\/.+/i.test(href)) continue;
-                        if (/\/blog\/?(?:[?#].*)?$/i.test(href)) continue;
-
-                        const canonical = href.split("#")[0].split("?")[0];
-                        if (seen.has(canonical)) continue;
-
-                        // Nesta's cards may wrap the title in a heading or expose it via the anchor.
-                        const card = anchor.closest("article, li, [class*='card'], [class*='listing'], [class*='result']") || anchor.parentElement;
-                        const heading = card ? card.querySelector("h2, h3, h4") : null;
-                        let title = ((heading && heading.textContent) || anchor.textContent || "")
-                            .replace(/\s+/g, " ")
-                            .trim();
-
-                        if (!title || title.length < 12) continue;
-                        if (/^(read more|learn more|view|blog)$/i.test(title)) continue;
-
-                        const cardText = card ? (card.textContent || "") : "";
-                        const dateMatch = cardText.match(/\b(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/i);
-                        const pubDate = dateMatch ? dateMatch[0] : Date.now();
-
-                        seen.add(canonical);
-                        found.push({
-                            title,
-                            link: canonical,
-                            description: "",
-                            pubDate
-                        });
-
-                        if (found.length >= 10) break;
-                    }
-
-                    if (found.length > 0) {
-                        console.info(`Loaded ${found.length} Nesta blogs from Nesta website via ${attempt.type}.`);
-                        return found;
-                    }
-                } catch (error) {
-                    console.warn(`Nesta website ${attempt.type} failed:`, error);
-                }
-            }
-
-            return [];
-        }
-
+        // Use targeted Google News RSS searches. Direct Nesta page scraping is avoided
+        // because browsers block it with CORS and public HTML proxies cause long waits.
         async function loadNestaBlogs() {
             const container = document.getElementById("feed-nesta");
-            container.innerHTML = `<div class="empty-state">Loading latest Nesta blogs…</div>`;
-
-            let items = await fetchNestaBlogsFromWebsite();
-
-            // RSS/search fallbacks if the live Nesta page cannot be read from this browser/network.
-            if (!items.length) {
-                const nestaBlogSources = [
-                    "https://news.google.com/rss/search?q=site%3Anesta.org.uk%2Fblog%2F&hl=en-GB&gl=GB&ceid=GB%3Aen",
-                    "https://news.google.com/rss/search?q=site%3Anesta.org.uk%20Nesta%20blog&hl=en-GB&gl=GB&ceid=GB%3Aen",
-                    "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml",
-                    "https://openrss.org/feed/www.nesta.org.uk"
-                ];
-
-                const sourceResults = await mapWithConcurrency(nestaBlogSources, 2, async (url) => {
-                    return await fetchRSS("Nesta Blogs", url);
-                });
-
-                items = sourceResults.find(result => Array.isArray(result) && result.length > 0) || [];
+            const oldHtml = container.innerHTML;
+            if (!oldHtml.trim()) {
+                container.innerHTML = `<div class="empty-state">Loading latest Nesta blogs…</div>`;
             }
 
-            // Keep genuine Nesta blog URLs where possible and remove duplicate titles/links.
+            const nestaSources = [
+                "https://news.google.com/rss/search?q=site%3Anesta.org.uk%2Fblog%2F+nesta&hl=en-GB&gl=GB&ceid=GB%3Aen",
+                "https://news.google.com/rss/search?q=site%3Anesta.org.uk%2Fblog%2F&hl=en-GB&gl=GB&ceid=GB%3Aen"
+            ];
+
+            const results = await Promise.all(nestaSources.map(url => fetchRSS("Nesta Blogs", url)));
+            const combined = results.flat();
+
             const unique = [];
             const seenLinks = new Set();
             const seenTitles = [];
 
-            for (const story of items) {
+            for (const story of combined) {
                 if (!story || !story.title || !story.link) continue;
-                const cleanTitle = String(story.title).replace(/<[^>]*>?/gm, '').replace(/\s+/g, ' ').trim();
-                const link = String(story.link).trim();
-                if (!cleanTitle || !link) continue;
-                if (seenLinks.has(link)) continue;
+
+                let cleanTitle = String(story.title)
+                    .replace(/<[^>]*>?/gm, '')
+                    .replace(/\s+-\s+Nesta\s*$/i, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+                if (!cleanTitle) continue;
+                if (seenLinks.has(story.link)) continue;
                 if (isDuplicateTopic(cleanTitle, seenTitles)) continue;
 
-                seenLinks.add(link);
+                const parsedDate = new Date(story.pubDate || '').getTime();
+                unique.push({
+                    ...story,
+                    title: cleanTitle,
+                    timestamp: isNaN(parsedDate) ? 0 : parsedDate
+                });
+                seenLinks.add(story.link);
                 seenTitles.push(cleanTitle);
-                unique.push({ ...story, title: cleanTitle, link });
-                if (unique.length >= 5) break;
             }
 
-            if (unique.length > 0) {
+            unique.sort((a, b) => b.timestamp - a.timestamp);
+            const latest = unique.slice(0, 5);
+
+            if (latest.length > 0) {
                 container.innerHTML = "";
-                unique.forEach(story => {
+                latest.forEach(story => {
                     const div = document.createElement("div");
                     div.className = "news-card";
 
-                    const storyDate = new Date(story.pubDate);
-                    const validDate = isNaN(storyDate.getTime()) ? new Date() : storyDate;
-                    const dateStr = validDate.toLocaleDateString("en-GB", { day:'numeric', month:'short', year:'numeric' });
-                    const cleanDateStr = dateStr.replace(/,/g, '');
+                    const storyDate = story.timestamp ? new Date(story.timestamp) : new Date();
+                    const cleanDateStr = storyDate.toLocaleDateString("en-GB", {
+                        day:'numeric', month:'short', year:'numeric'
+                    }).replace(/,/g, '');
 
                     div.innerHTML = `
                         <div class="meta-info">
@@ -1056,12 +960,15 @@
                     `;
                     container.appendChild(div);
                 });
-            } else {
+            } else if (!oldHtml.trim()) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        Unable to load Nesta blogs automatically at this time.<br><br>
+                        Latest Nesta blogs could not be retrieved automatically.<br><br>
                         <a href="https://www.nesta.org.uk/blog/" target="_blank" rel="noopener noreferrer">Open Nesta Blogs</a>
                     </div>`;
+            } else {
+                // If a refresh fails, keep the last successful content instead of blanking it.
+                container.innerHTML = oldHtml;
             }
         }
 
@@ -1128,23 +1035,41 @@
 
         // --- 7. INDEPENDENT BOOTSTRAPPING ---
         async function bootDashboard() {
-            // Give the two most visible panels priority before the large mission-feed job.
-            await Promise.all([
+            // Start all visible panels immediately and independently.
+            // A slow/failed source can no longer hold up the others.
+            const visibleJobs = [
                 loadTopStories(),
+                loadTrends(),
                 loadNestaBlogs()
-            ]);
+            ];
 
-            // Trends next, then the larger mission aggregation.
-            await loadTrends();
-            await loadMissionStories();
-            
-            if (rotationTimer) clearInterval(rotationTimer);
-            renderRotatedMission();
-            rotationTimer = setInterval(autoRotate, 8000); 
+            // Do not block the visible dashboard on the large mission aggregation.
+            // It runs separately with limited concurrency and updates the rotating panel
+            // when its first pass completes.
+            loadMissionStories()
+                .then(() => {
+                    if (rotationTimer) clearInterval(rotationTimer);
+                    renderRotatedMission();
+                    rotationTimer = setInterval(autoRotate, 8000);
+                })
+                .catch(error => console.warn("Mission refresh failed:", error));
+
+            await Promise.allSettled(visibleJobs);
         }
 
-        bootDashboard();
-        setInterval(bootDashboard, 300000);
+        let dashboardRefreshRunning = false;
+        async function safeRefreshDashboard() {
+            if (dashboardRefreshRunning) return;
+            dashboardRefreshRunning = true;
+            try {
+                await bootDashboard();
+            } finally {
+                dashboardRefreshRunning = false;
+            }
+        }
+
+        safeRefreshDashboard();
+        setInterval(safeRefreshDashboard, 300000);
 
     </script>
 </body>
