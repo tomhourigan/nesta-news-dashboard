@@ -356,7 +356,7 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        // --- 2. UNIVERSAL SAFE FETCH & SAFARI XML PARSER ---
+        // --- 2. UNIVERSAL SAFE FETCH & SAFARI XML/HTML DUAL PARSER ---
         async function fetchWithTimeout(url, timeoutMs = 6000) {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -385,27 +385,71 @@
             return "";
         }
 
+        function parseRawXml(xmlText) {
+            if (!xmlText || typeof xmlText !== 'string') return [];
+            let doc;
+            const parser = new DOMParser();
+            
+            try {
+                doc = parser.parseFromString(xmlText, "text/xml");
+                if (doc.querySelector("parsererror")) {
+                    doc = parser.parseFromString(xmlText, "text/html");
+                }
+            } catch (e) {
+                try {
+                    doc = parser.parseFromString(xmlText, "text/html");
+                } catch(err) {
+                    return [];
+                }
+            }
+
+            if (!doc) return [];
+
+            let xmlItems = Array.from(doc.querySelectorAll("item, entry"));
+            if (xmlItems.length === 0 && doc.getElementsByTagName) {
+                const items = doc.getElementsByTagName("item");
+                const entries = doc.getElementsByTagName("entry");
+                xmlItems = [...Array.from(items), ...Array.from(entries)];
+            }
+
+            return xmlItems.map(item => {
+                const title = getXmlNodeText(item, ["title"]);
+                let link = getXmlNodeText(item, ["link"]);
+                if (!link) {
+                    const linkEl = item.querySelector("link");
+                    if (linkEl) link = linkEl.getAttribute("href") || linkEl.textContent || "";
+                }
+                const pubDate = getXmlNodeText(item, ["pubdate", "pubDate", "published", "updated", "dc:date"]);
+                const desc = getXmlNodeText(item, ["description", "summary", "content", "content:encoded"]);
+
+                return {
+                    title: title ? title.trim() : "",
+                    link: link ? link.trim() : "",
+                    description: desc ? desc.trim() : "",
+                    pubDate: pubDate ? pubDate.trim() : Date.now()
+                };
+            }).filter(item => item.title && item.title.trim().length > 0 && item.link);
+        }
+
         async function fetchRSS(sourceName, url) {
             let items = [];
             const secureUrl = url.replace(/^http:\/\//i, 'https://');
             
-            // Waterfall configured specifically for CORS-restricted mobile browsers
             const proxyList = [
                 { type: 'allorigins', url: `https://api.allorigins.win/get?url=${encodeURIComponent(secureUrl)}` },
                 { type: 'rss2json', url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(secureUrl)}` },
-                { type: 'raw', url: `https://corsproxy.io/?${encodeURIComponent(secureUrl)}` },
                 { type: 'raw', url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(secureUrl)}` }
             ];
 
             for (let i = 0; i < proxyList.length; i++) {
                 try {
                     const p = proxyList[i];
-                    const response = await fetchWithTimeout(p.url, 5000);
+                    const response = await fetchWithTimeout(p.url, 6000);
                     if (!response.ok) continue;
 
                     if (p.type === 'allorigins') {
                         const data = await response.json();
-                        if (data && data.contents && data.contents.length > 50) {
+                        if (data && data.contents && data.contents.length > 30) {
                             const parsed = parseRawXml(data.contents);
                             if (parsed && parsed.length > 0) {
                                 items = parsed;
@@ -425,7 +469,7 @@
                         }
                     } else if (p.type === 'raw') {
                         const xmlText = await response.text();
-                        if (xmlText && xmlText.length > 50) {
+                        if (xmlText && xmlText.length > 30) {
                             const parsed = parseRawXml(xmlText);
                             if (parsed && parsed.length > 0) {
                                 items = parsed;
@@ -436,37 +480,6 @@
                 } catch (e) { } 
             }
             return items;
-        }
-
-        function parseRawXml(xmlText) {
-            try {
-                if (!xmlText) return [];
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-                if (xmlDoc.querySelector("parsererror")) return [];
-
-                const xmlItems = Array.from(xmlDoc.querySelectorAll("item, entry"));
-                
-                return xmlItems.map(item => {
-                    const title = getXmlNodeText(item, ["title"]);
-                    let link = getXmlNodeText(item, ["link"]);
-                    if (!link) {
-                        const linkEl = item.querySelector("link");
-                        if (linkEl) link = linkEl.getAttribute("href") || "";
-                    }
-                    const pubDate = getXmlNodeText(item, ["pubDate", "published", "updated"]);
-                    const desc = getXmlNodeText(item, ["description", "summary", "content"]);
-
-                    return {
-                        title: title,
-                        link: link,
-                        description: desc,
-                        pubDate: pubDate || Date.now()
-                    };
-                }).filter(item => item.title && item.title.trim().length > 0 && item.link);
-            } catch(e) {
-                return [];
-            }
         }
 
         // --- 3. SOURCES & CONFIGURATION ---
@@ -873,13 +886,14 @@
             });
         }
 
-        // Fetch 4: LATEST NESTA BLOGS (With Primary + Backup Endpoints)
+        // Fetch 4: LATEST NESTA BLOGS (Multi-Source Robust Fallback)
         async function loadNestaBlogs() {
             const container = document.getElementById("feed-nesta");
             const nestaBlogSources = [
                 "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml",
-                "https://openrss.org/feed/www.nesta.org.uk",
-                "https://news.google.com/rss/search?q=site:nesta.org.uk&hl=en-GB&gl=GB&ceid=GB:en"
+                "https://news.google.com/rss/search?q=site:nesta.org.uk/blog&hl=en-GB&gl=GB&ceid=GB:en",
+                "https://news.google.com/rss/search?q=site:nesta.org.uk+nesta&hl=en-GB&gl=GB&ceid=GB:en",
+                "https://openrss.org/feed/www.nesta.org.uk"
             ];
 
             let items = [];
