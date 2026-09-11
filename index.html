@@ -73,7 +73,6 @@
             font-weight: bold;
         }
 
-        /* 3-COLUMN LAYOUT */
         main {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -193,16 +192,9 @@
         .news-card a:hover { color: var(--nesta-primary-blue); }
 
         /* Specific Shrunken Styles for Top UK Stories */
-        #feed-top .news-card {
-            padding: 0.85rem 0; 
-        }
-        #feed-top .meta-info {
-            display: none; 
-        }
-        #feed-top .news-card h4 {
-            font-size: 0.95rem; 
-            line-height: 1.4;
-        }
+        #feed-top .news-card { padding: 0.85rem 0; }
+        #feed-top .meta-info { display: none; }
+        #feed-top .news-card h4 { font-size: 0.95rem; line-height: 1.4; }
         #feed-top .source-badge {
             background-color: var(--nesta-dark-blue);
             font-size: 0.65rem;
@@ -213,19 +205,14 @@
         }
 
         /* Styles for Trends Box */
-        #feed-trends {
-            padding-top: 0.5rem;
-            padding-bottom: 0.5rem;
-        }
+        #feed-trends { padding-top: 0.5rem; padding-bottom: 0.5rem; }
         .trend-item {
             display: flex;
             align-items: center;
             padding: 0.85rem 0;
             border-bottom: 1px solid #EAEAEA;
         }
-        .trend-item:last-child {
-            border-bottom: none;
-        }
+        .trend-item:last-child { border-bottom: none; }
         .trend-rank {
             font-size: 1.1rem;
             font-weight: bold;
@@ -233,10 +220,7 @@
             width: 35px;
             flex-shrink: 0;
         }
-        .trend-name {
-            font-size: 0.95rem;
-            font-weight: bold;
-        }
+        .trend-name { font-size: 0.95rem; font-weight: bold; }
         .trend-name a {
             color: var(--text-dark);
             text-decoration: none;
@@ -246,9 +230,7 @@
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
-        .trend-name a:hover {
-            color: var(--nesta-primary-blue);
-        }
+        .trend-name a:hover { color: var(--nesta-primary-blue); }
 
         .empty-state {
             padding: 3rem 1rem;
@@ -259,10 +241,7 @@
             line-height: 1.5;
         }
         
-        /* Mobile Layout */
-        @media (max-width: 1200px) {
-            main { grid-template-columns: repeat(2, 1fr); }
-        }
+        @media (max-width: 1200px) { main { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 900px) {
             main { grid-template-columns: 1fr; }
             header { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
@@ -291,7 +270,6 @@
     <main>
         <!-- COLUMN 1: Top News & Trends -->
         <div class="vertical-stack">
-            
             <section class="mission-col" id="col-top">
                 <div class="mission-header-wrapper" id="wrapper-top">
                     <h3 class="mission-header">Top UK Stories Today</h3>
@@ -305,7 +283,6 @@
                 </div>
                 <div class="feed-container" id="feed-trends"></div>
             </section>
-
         </div>
 
         <!-- COLUMN 2: Missions (Rotates & Manual Navigation) -->
@@ -385,28 +362,35 @@
             { name: "BBC Education", url: "http://feeds.bbci.co.uk/news/education/rss.xml" },
             { name: "BBC Health", url: "http://feeds.bbci.co.uk/news/health/rss.xml" },
             { name: "BBC Science/Env", url: "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml" },
-            
             // Substack and Medium (Using Google News RSS for better UK scoping)
             { name: "Substack", url: "https://news.google.com/rss/search?q=site:substack.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" },
             { name: "Medium", url: "https://news.google.com/rss/search?q=site:medium.com+(UK+OR+Britain)+(politics+OR+policy+OR+health+OR+education+OR+climate)&hl=en-GB&gl=GB&ceid=GB:en" }
         ];
 
-        // HIGHLY PRECISE KEYWORDS BASED ON NESTA'S 2030 GOALS
+        // MASSIVELY EXPANDED KEYWORDS BASED ON NESTA'S 2030 MISSIONS
         const keywords = {
             fairer: [
-                "early years", "early childhood", "childcare", "nursery", "nurseries", "pre-school", "preschool",
-                "childminder", "childminders", "parenting interventions", "family support", "child benefit",
-                "sure start", "family hubs", "child poverty", "early education", "maternity pay", "paternity pay"
+                "early years", "childcare", "nursery", "nurseries", "pre-school", "preschool", 
+                "childminder", "childminders", "primary school", "primary schools", "primary education", 
+                "pupil", "pupils", "education policy", "child poverty", "maternity", "paternity", 
+                "child benefit", "sure start", "family hubs", "parenting interventions", "family support",
+                "early childhood", "early education", "early development", "key stage 1", "free school meals", 
+                "ofsted", "childhood", "growing up", "kids", "education system", "school funding", "schools"
             ],
             healthy: [
-                "obesity", "glp-1", "glp1", "wegovy", "ozempic", "mounjaro", "weight loss", "weight-loss",
-                "sugar tax", "junk food", "calorie", "calories", "ultra-processed", "upf", "upfs", "food policy",
-                "food environment", "healthy eating", "food advertising", "hfss", "childhood obesity"
+                "obesity", "glp-1", "glp1", "wegovy", "ozempic", "mounjaro", "weight loss", "weight-loss", 
+                "sugar tax", "junk food", "calorie", "calories", "ultra-processed", "upf", "upfs", 
+                "healthy eating", "food advertising", "hfss", "public health strategy", "public health", 
+                "food industry", "supermarket food", "nutrition", "food environment", "food reformulation", 
+                "portion sizes", "food policy", "health inequality", "preventative health", "weight management", "diet", "diets"
             ],
             sustainable: [
                 "heat pump", "heat pumps", "low-carbon heating", "low carbon heating", "household emissions",
-                "home insulation", "retrofit", "boiler upgrade", "gas boiler", "net zero homes", "domestic energy",
-                "green workforce", "clean heating", "energy bill", "energy bills", "net zero", "carbon emissions"
+                "boiler upgrade", "home insulation", "retrofit", "net zero", "net-zero", "carbon emissions", 
+                "climate change", "green energy", "clean energy", "renewable", "renewables", "solar power", 
+                "wind farm", "wind farms", "energy bill", "energy bills", "electricity", "power", 
+                "national grid", "decarbonisation", "fossil fuel", "fossil fuels", "north sea oil", "north sea gas", 
+                "oil and gas", "climate target", "low carbon", "green skills", "energy transition", "environment", "global warming"
             ]
         };
 
@@ -418,23 +402,16 @@
             "interest rates", "bank of england", "budget", "chancellor", "cabinet", "election"
         ];
 
-        // MASSIVELY EXPANDED BLOCKLISTS TO REMOVE JUNK
+        // BLOCKLISTS
         const blocklist = [
-            // Sports & Entertainment
-            "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", "fashion", "designer", "actor", "actress", "film", "movie", "pop star", "album", "music",
-            // International
-            "indonesia", "usa", "u.s.", "biden", "trump", "harris", "china", "xi jinping", "russia", "ukraine", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "iran", "australia", "india", "pakistan", "japan", "africa", "south america", "mexico", "new york", "washington", "macron", "germany", "scholz", "pentagon",
-            // Unrelated Demographics (Older kids)
+            "premier league", "football", "rugby", "cricket", "tennis", "formula 1", "f1", "transfer window", "manchester united", "arsenal", "chelsea", "liverpool", "strictly come dancing", "love island", "celebrity", "hollywood", "champions league", 
+            "biden", "trump", "harris", "putin", "zelensky", "israel", "gaza", "hamas", "lebanon", "syria", "indonesia",
             "teenager", "teenagers", "teens", "university", "universities", "gcse", "gcses", "a-level", "a-levels", "higher education", "student", "students", "campus"
         ];
-
-        // Specific blocklist to catch spammy Medium/Substack lifestyle posts
-        const blogSpamBlocklist = ["hair", "beauty", "skincare", "wellness", "yoga", "astrology", "horoscope", "crypto", "stress", "beautiful people", "lose weight fast", "diet plan", "workout", "muscle", "spiritual"];
-
-        // Removes soft news, paper summaries, and royalty
-        const summaryBlocklist = ["front page", "what the papers say", "briefing", "round-up", "papers:", "newspaper", "at a glance", "catch up", "your morning", "evening news", "daily round-up"];
-        const softNewsBlocklist = ["opinion:", "review:", "how to", "guide", "catherine", "kate middleton", "princess of wales", "prince william", "prince harry", "meghan markle", "royal family", "royal visit", "bruce willis", "illness", "diagnosis", "cancer", "tumor", "surgery", "hospital appearance", "red carpet", "spotted"];
         
+        const blogSpamBlocklist = ["hair", "beauty", "skincare", "wellness", "yoga", "astrology", "horoscope", "crypto", "stress", "beautiful people", "lose weight fast", "diet plan", "workout", "muscle", "spiritual"];
+        const summaryBlocklist = ["front page", "what the papers say", "briefing", "round-up", "papers:", "newspaper", "at a glance", "catch up", "your morning", "evening news", "daily round-up"];
+        const softNewsBlocklist = ["catherine", "kate middleton", "princess of wales", "prince william", "prince harry", "meghan markle", "royal family", "royal visit", "bruce willis", "hospital appearance", "red carpet", "spotted", "gets candid"];
         const blockedUrlPaths = ["/world/", "/world-news/", "/us-news/", "/australia-news/", "/international/", "/global/"];
 
         function createRegex(keywordArray) {
@@ -451,8 +428,8 @@
         const regSummaryBlocklist = createRegex(summaryBlocklist);
         const regSoftNewsBlocklist = createRegex(softNewsBlocklist);
         
-        // Catches standalone first-person pronouns for narrative/opinion articles
-        const firstPersonRegex = /\b(i|my|me|mine|we tried|i went)\b/i;
+        // FIXED First Person Regex: Now only checks if the headline *begins* with these phrases (e.g. Opinion/Lifestyle pieces)
+        const firstPersonRegex = /^(I |My |Why I |How I |We tried |I went )/i;
 
         let missionData = { fairer: [], healthy: [], sustainable: [] };
         let rotationTimer = null;
@@ -501,7 +478,7 @@
                             // Filter out soft news, summaries, royals, and narrative first-person pieces
                             if (regSummaryBlocklist.test(searchText) || 
                                 regSoftNewsBlocklist.test(searchText) || 
-                                firstPersonRegex.test(title.toLowerCase())) {
+                                firstPersonRegex.test(title)) {
                                 return;
                             }
 
@@ -600,9 +577,10 @@
             }
         }
 
-        // Fetch 3: MISSIONS (Rotates, Looks back 72 hours, Prioritizes News over Blogs)
+        // Fetch 3: MISSIONS
         async function loadMissionStories() {
             let allMissionStories = [];
+            // Lookback extended to 72 hours for high volume
             const lookbackWindow = Date.now() - (72 * 60 * 60 * 1000);
 
             const fetchPromises = missionSources.map(async (source) => {
@@ -625,7 +603,7 @@
                             if (articleTimestamp >= lookbackWindow) {
                                 const searchText = (title + " " + description).toLowerCase();
                                 
-                                // NEW: We block general blocklist, blog spam, AND the soft news (royals/celebrities)
+                                // Block specific spam and soft news
                                 if (regBlocklist.test(searchText) || regBlogSpam.test(searchText) || regSoftNewsBlocklist.test(searchText)) return;
 
                                 let targetMission = null;
@@ -635,7 +613,6 @@
                                 
                                 if (targetMission) {
                                     if (!allMissionStories.some(s => s.link === item.link)) {
-                                        // Flag if it's a blog source so we can sort them lower
                                         const isBlog = source.name.includes("Substack") || source.name.includes("Medium");
                                         
                                         allMissionStories.push({
@@ -652,8 +629,7 @@
 
             await Promise.all(fetchPromises);
             
-            // SORTING LOGIC: Hard News Outlets (isBlog = false) always sit above Blogs (isBlog = true).
-            // Within those categories, they are sorted newest-first.
+            // SORTING LOGIC: Hard News Outlets sit above Blogs
             allMissionStories.sort((a, b) => {
                 if (a.isBlog !== b.isBlog) return a.isBlog ? 1 : -1;
                 return b.timestamp - a.timestamp;
@@ -661,6 +637,7 @@
 
             missionData = { fairer: [], healthy: [], sustainable: [] };
             
+            // Allow up to 10 articles per mission
             allMissionStories.forEach(story => {
                 if (missionData[story.targetMission].length < 10) {
                     missionData[story.targetMission].push(story);
@@ -671,7 +648,7 @@
         // Fetch 4: LATEST NESTA BLOGS 
         async function loadNestaBlogs() {
             const container = document.getElementById("feed-nesta");
-            // Your new working RSS.app link specifically for Nesta blogs
+            // The custom RSS.app feed provided by you
             const nestaUrl = "https://rss.app/feeds/I5gWJK0t9KKrfgdt.xml"; 
 
             const proxyList = [
@@ -735,7 +712,6 @@
                     const storyDate = new Date(story.pubDate);
                     const validDate = isNaN(storyDate.getTime()) ? new Date() : storyDate;
                     const dateStr = validDate.toLocaleDateString("en-GB", { day:'numeric', month:'short', year:'numeric' });
-                    // Clean comma from date here too just in case
                     const cleanDateStr = dateStr.replace(/,/g, '');
                     const cleanTitle = story.title.replace(/<[^>]*>?/gm, ''); 
 
@@ -810,7 +786,6 @@
 
         // --- 7. INDEPENDENT BOOTSTRAPPING ---
         async function bootDashboard() {
-            // Load everything independently
             loadTopStories();
             loadTrends();
             loadNestaBlogs(); 
